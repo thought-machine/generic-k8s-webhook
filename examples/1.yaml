@@ -1,0 +1,80 @@
+---
+apiVersion: generic-webhook/v1alpha1
+kind: GenericWebhookConfig
+webhookConfig:
+  # Removes the command if it performs a "sleep"
+  # It runs for all the containers in the pod
+  - forEach: .spec.containers
+    condition:
+      contain:
+        elements:
+          path: .command
+        value:
+          const: sleep
+    action:
+      patch:
+        op: remove
+        path: .command
+      # No need to specify this, since we always
+      # accept by default, unless there's some error
+      accept: true
+---
+webhookConfig:
+  - condition:
+      and:
+        # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in preferredDuringSchedulingIgnoredDuringExecution
+        - and:
+            forEach: # forEachKey, forEachValue
+              elements:
+                path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+              op:
+                not:
+                  contain:
+                    elements: { path: .preference.matchExpressions }
+                    value:
+                      const: { key: tmachine.io/aws-instance-lifecycle }
+        # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in requiredDuringSchedulingIgnoredDuringExecution
+        - and:
+            forEach:
+              elements:
+                path: .spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
+              op:
+                not:
+                  contain:
+                    elements: { path: .matchExpressions }
+                    value:
+                      const: { key: tmachine.io/aws-instance-lifecycle }
+    action:
+      patch:
+        op: add
+        path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+        value:
+          preference:
+            matchExpressions:
+              - key: tmachine.io/aws-instance-lifecycle
+                operator: In
+                values:
+                  - spot
+          weight: 1
+---
+webhookConfig:
+  # Reject the Deployments that have a name different from the name in their pod template
+  - condition:
+      and:
+        - equal:
+            - path: .kind
+            - const: Deployment
+        - not:
+            equal:
+              - path: .metadata.name
+              - path: .spec.template.metadata.name
+    action:
+      accept: false
+---
+path1: .spec.metadata
+
+# On a forEach loop that iterates through all the containers in a pod
+path2: $.spec.metadata
+path3: -.spec.metadata
+path4: .image
+path5: $+.image
