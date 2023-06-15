@@ -19,7 +19,7 @@ class Operator(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_value(self, data: dict, contexts: list[str]):
+    def get_value(self, contexts: list):
         pass
 
 
@@ -39,9 +39,9 @@ class BinaryOp(Operator):
         if self.return_type() is not None and self.input_type() != self.args.return_type():
             raise RuntimeError(f"In {path_op} we expect {self.input_type()} as input but got {self.args.return_type()}")
 
-    def get_value(self, data: dict, contexts: list[str]) -> Any:
+    def get_value(self, contexts: list) -> Any:
         elem = self._neutral_elem()
-        for arg_value in self.args.get_value(data, contexts):
+        for arg_value in self.args.get_value(contexts):
             elem = self._op(elem, arg_value)
         return elem
 
@@ -109,8 +109,8 @@ class List(Operator):
         else:
             self.return_type = list[types_in_list.pop()]
 
-    def get_value(self, data: dict, contexts: list[str]):
-        return [op.get_value(data, contexts) for op in self.list_op]
+    def get_value(self, contexts: list):
+        return [op.get_value(contexts) for op in self.list_op]
 
     def input_type(self) -> type:
         return None
@@ -119,13 +119,37 @@ class List(Operator):
         return list[self.return_type]
 
 
+class ForEach(Operator):
+    def __init__(self, op_inputs: Any, path_op: str) -> None:
+        if "elements" not in op_inputs:
+            raise ValueError(f"The forEach placed in {path_op} required the argument 'elements'")
+        self.elements = parse_operator(op_inputs["elements"], f"{path_op}.elements")
+
+        if "op" not in op_inputs:
+            raise ValueError(f"The forEach placed in {path_op} required the argument 'op'")
+        self.op = parse_operator(op_inputs["op"], f"{path_op}.op")
+
+    def get_value(self, contexts: list):
+        result_list = []
+        for elem in self.elements.get_value():
+            mapped_elem = self.op.get_value(contexts + [elem])
+            result_list.append(mapped_elem)
+        return result_list
+
+    def input_type(self) -> type:
+        return None
+
+    def return_type(self) -> type:
+        return list[self.op.return_type()]
+
+
 class Const(Operator):
     NAME = "const"
 
     def __init__(self, op_inputs: Any, path_op: str) -> None:
         self.value = op_inputs
 
-    def get_value(self, data: dict, contexts: list[str]):
+    def get_value(self, contexts: list):
         return self.value
 
     def input_type(self) -> type:
@@ -141,8 +165,36 @@ class Path(Operator):
     def __init__(self, op_inputs: str, path_op: str) -> None:
         if not isinstance(op_inputs, str):
             raise ValueError(f"Expected to find str but got {op_inputs} in {path_op}")
+        # Split by '.', but not by '\.'
         self.path = re.split(r"(?<!\\)\.", op_inputs)
+        # Convert the '\.' to '.'
+        self.path = [elem.replace("\\.", ".") for elem in self.path]
 
+        # Get the id of the context that it will use
+        if self.path[0] == "":
+            self.context_id = -1
+        elif self.path[0] == "$":
+            self.context_id = 0
+        else:
+            raise ValueError(f"Invalid {self.path[0]} in {path_op}")
+
+    def get_value(self, contexts: list):
+        context = contexts[self.context_id]
+        return self._get_value_from_json(context, self.path[1:])
+
+    def _get_value_from_json(self, data: Union[list, dict], path: list):
+        if isinstance(data, dict):
+            return self._get_value_from_json(data[path[0]], path[1:])
+        elif isinstance(data, list):
+            return self._get_value_from_json(data[int(path[0]), path[1:]])
+        else:
+            return data
+
+    def input_type(self) -> type:
+        return None
+
+    def return_type(self) -> type:
+        return None
 
 
 # Magic dictionary that contains all the operators defined in this file
