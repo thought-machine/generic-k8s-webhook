@@ -1,23 +1,27 @@
 ---
 apiVersion: generic-webhook/v1alpha1
 kind: GenericWebhookConfig
-webhookConfig:
-  # Removes the command if it performs a "sleep"
-  # It runs for all the containers in the pod
-  - forEach: .spec.containers
-    condition:
-      contain:
-        elements:
-          getValue: .command
-        value:
-          const: sleep
-    action:
-      patch:
-        op: remove
-        path: command
-      # No need to specify this, since we always
-      # accept by default, unless there's some error
-      accept: true
+webhooks:
+  - name: cmd-patch
+    port: 8888
+    path: cmd-patch
+    actions:
+      # Removes the command if it performs a "sleep"
+      # It runs for all the containers in the pod
+      - forEach: 
+          getValue: .spec.containers
+        condition:
+          contain:
+            elements:
+              getValue: .command
+            value:
+              const: sleep
+        patch:
+          op: remove
+          path: command
+        # No need to specify this, since we always
+        # accept by default, unless there's some error
+        accept: true
 ---
 webhookConfig:
   - condition:
