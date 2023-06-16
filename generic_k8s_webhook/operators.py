@@ -86,6 +86,48 @@ class Or(BinaryOp):
         return False
 
 
+class Sum(BinaryOp):
+    NAME = "sum"
+
+    def input_type(self) -> type:
+        return list[bool]
+
+    def return_type(self) -> type:
+        bool
+
+    def _op(self, lhs, rhs):
+        return lhs + rhs
+
+    def _neutral_elem(self):
+        return 0
+
+
+class UnaryOp(Operator):
+    def __init__(self, op_inputs: Any, path_op: str) -> None:
+        self.arg = parse_operator(op_inputs, path_op)
+        if self.arg.return_type() != self.input_type():
+            raise ValueError(f"In {path_op}, expected an input type of {self.input_type()}, but got {self.arg.return_type()}")
+
+    def get_value(self, contexts: list) -> Any:
+        arg_value = self.arg.get_value(contexts)
+        return self._op(arg_value)
+
+    @abc.abstractmethod
+    def _op(self, arg_value):
+        pass
+
+class Not(UnaryOp):
+    NAME = "not"
+
+    def input_type(self) -> type:
+        return bool
+
+    def return_type(self) -> type:
+        return bool
+
+    def _op(self, arg_value):
+        return not arg_value
+
 class List(Operator):
     NAME = "list"
 
@@ -120,6 +162,8 @@ class List(Operator):
 
 
 class ForEach(Operator):
+    NAME = "forEach"
+
     def __init__(self, op_inputs: Any, path_op: str) -> None:
         if "elements" not in op_inputs:
             raise ValueError(f"The forEach placed in {path_op} required the argument 'elements'")
@@ -131,7 +175,7 @@ class ForEach(Operator):
 
     def get_value(self, contexts: list):
         result_list = []
-        for elem in self.elements.get_value():
+        for elem in self.elements.get_value(contexts):
             mapped_elem = self.op.get_value(contexts + [elem])
             result_list.append(mapped_elem)
         return result_list
@@ -141,6 +185,32 @@ class ForEach(Operator):
 
     def return_type(self) -> type:
         return list[self.op.return_type()]
+
+
+class Contain(Operator):
+    NAME = "contain"
+
+    def __init__(self, op_inputs: Any, path_op: str) -> None:
+        if "elements" not in op_inputs:
+            raise ValueError(f"The forEach placed in {path_op} required the argument 'elements'")
+        self.elements = parse_operator(op_inputs["elements"], f"{path_op}.elements")
+
+        if "value" not in op_inputs:
+            raise ValueError(f"The forEach placed in {path_op} required the argument 'value'")
+        self.elem = parse_operator(op_inputs["value"], f"{path_op}.value")
+
+    def get_value(self, contexts: list):
+        target_elem = self.elem.get_value(contexts)
+        for elem in self.elements.get_value(contexts):
+            if target_elem == elem:
+                return True
+        return False
+
+    def input_type(self) -> type:
+        return None
+
+    def return_type(self) -> type:
+        return bool
 
 
 class Const(Operator):
@@ -159,8 +229,8 @@ class Const(Operator):
         return type(self.value)
 
 
-class Path(Operator):
-    NAME = "path"
+class GetValue(Operator):
+    NAME = "getValue"
 
     def __init__(self, op_inputs: str, path_op: str) -> None:
         if not isinstance(op_inputs, str):
@@ -183,12 +253,15 @@ class Path(Operator):
         return self._get_value_from_json(context, self.path[1:])
 
     def _get_value_from_json(self, data: Union[list, dict], path: list):
+        if len(path) == 0 or path[0] == "":
+            return data
+
         if isinstance(data, dict):
             return self._get_value_from_json(data[path[0]], path[1:])
         elif isinstance(data, list):
-            return self._get_value_from_json(data[int(path[0]), path[1:]])
+            return self._get_value_from_json(data[int(path[0])], path[1:])
         else:
-            return data
+            raise RuntimeError(f"Expected list or dict, but got {data}")
 
     def input_type(self) -> type:
         return None
@@ -214,40 +287,3 @@ def parse_operator(op_spec: dict, path_op: str="") -> Operator:
     op = op_class(op_spec, f"{path_op}.{op_name}")
 
     return op
-
-# class BaseOp(abc.ABC):
-#     @abc.abstractclassmethod
-#     def operate(self, values: list) -> bool:
-#         pass
-
-
-# class Any(BaseOp):
-#     NAME = "any"
-
-#     @classmethod
-#     def operate(self, values: list) -> bool:
-#         return any(values)
-
-
-# class All(BaseOp):
-#     NAME = "all"
-
-#     @classmethod
-#     def operate(self, values: list) -> bool:
-#         return all(values)
-
-
-# class And(BaseOp):
-#     NAME = "and"
-
-#     @classmethod
-#     def operate(self, values: list) -> bool:
-#         return all(values)
-
-
-# class Or(BaseOp):
-#     NAME = "or"
-
-#     @classmethod
-#     def operate(self, values: list) -> bool:
-#         return any(values)

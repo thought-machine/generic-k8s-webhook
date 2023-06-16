@@ -8,13 +8,13 @@ webhookConfig:
     condition:
       contain:
         elements:
-          path: .command
+          getValue: .command
         value:
           const: sleep
     action:
       patch:
         op: remove
-        path: .command
+        path: command
       # No need to specify this, since we always
       # accept by default, unless there's some error
       accept: true
@@ -26,28 +26,28 @@ webhookConfig:
         - and:
             forEach: # forEachKey, forEachValue
               elements:
-                path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+                getValue: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
               op:
                 not:
                   contain:
-                    elements: { path: .preference.matchExpressions }
+                    elements: { getValue: .preference.matchExpressions }
                     value:
                       const: { key: tmachine.io/aws-instance-lifecycle }
         # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in requiredDuringSchedulingIgnoredDuringExecution
         - and:
             forEach:
               elements:
-                path: .spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
+                getValue: .spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
               op:
                 not:
                   contain:
-                    elements: { path: .matchExpressions }
+                    elements: { getValue: .matchExpressions }
                     value:
                       const: { key: tmachine.io/aws-instance-lifecycle }
     action:
       patch:
         op: add
-        path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+        getValue: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
         value:
           preference:
             matchExpressions:
@@ -62,19 +62,19 @@ webhookConfig:
   - condition:
       and:
         - equal:
-            - path: .kind
+            - getValue: .kind
             - const: Deployment
         - not:
             equal:
-              - path: .metadata.name
-              - path: .spec.template.metadata.name
+              - getValue: .metadata.name
+              - getValue: .spec.template.metadata.name
     action:
       accept: false
 ---
-path1: .spec.metadata
+getValue1: .spec.metadata
 
 # On a forEach loop that iterates through all the containers in a pod
-path2: $.spec.metadata
-path3: -.spec.metadata
-path4: .image
-path5: $+.image
+getValue2: $.spec.metadata
+getValue3: -.spec.metadata
+getValue4: .image
+getValue5: $+.image
