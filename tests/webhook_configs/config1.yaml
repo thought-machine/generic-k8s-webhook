@@ -1,0 +1,17 @@
+---
+apiVersion: generic-webhook/v1alpha1
+kind: GenericWebhookConfig
+webhooks:
+  - name: cmd-patch
+    port: 8888
+    path: cmd-patch
+    actions:
+      - condition:
+          equal:
+            - getValue: .metadata.name
+            - const: my-app
+        patch:
+          op: replace
+          path: .metadata.name
+          value: my-awesome-app
+        accept: true

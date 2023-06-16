@@ -5,6 +5,8 @@ import sys
 from typing import Union, Any, get_origin, get_args
 from numbers import Number
 
+import generic_k8s_webhook.utils as utils
+
 
 class Operator(abc.ABC):
     @abc.abstractmethod
@@ -226,13 +228,11 @@ class Contain(Operator):
     NAME = "contain"
 
     def __init__(self, op_inputs: Any, path_op: str) -> None:
-        if "elements" not in op_inputs:
-            raise ValueError(f"The forEach placed in {path_op} required the argument 'elements'")
-        self.elements = parse_operator(op_inputs["elements"], f"{path_op}.elements")
+        self.elements = utils.must_get(op_inputs, "elements",
+                                       f"The forEach placed in {path_op} required the argument 'elements'")
+        self.elem = utils.must_get(op_inputs, "value",
+                                   f"The forEach placed in {path_op} required the argument 'value'")
 
-        if "value" not in op_inputs:
-            raise ValueError(f"The forEach placed in {path_op} required the argument 'value'")
-        self.elem = parse_operator(op_inputs["value"], f"{path_op}.value")
 
     def get_value(self, contexts: list):
         target_elem = self.elem.get_value(contexts)
@@ -306,19 +306,21 @@ class GetValue(Operator):
 
 
 # Magic dictionary that contains all the operators defined in this file
-dict_operators = {
-    obj.NAME: obj
-    for _, obj in inspect.getmembers(sys.modules[__name__])
-    if isinstance(obj, type) and issubclass(obj, Operator) and hasattr(obj, "NAME")
-}
+DICT_OPERATORS = {}
+for _, obj in inspect.getmembers(sys.modules[__name__]):
+    if isinstance(obj, type) and issubclass(obj, Operator) and hasattr(obj, "NAME"):
+        if obj.NAME in DICT_OPERATORS:
+            raise RuntimeError(f"Duplicated operator {obj.NAME}")
+        DICT_OPERATORS[obj.NAME] = obj
+
 
 def parse_operator(op_spec: dict, path_op: str="") -> Operator:
     if len(op_spec) != 1:
         raise ValueError(f"Expected exactly one key under {path_op}")
     op_name, op_spec = op_spec.popitem()
-    if op_name not in dict_operators:
+    if op_name not in DICT_OPERATORS:
         raise ValueError(f"The operator {op_name} from {path_op} is not defined")
-    op_class = dict_operators[op_name]
+    op_class = DICT_OPERATORS[op_name]
     op = op_class(op_spec, f"{path_op}.{op_name}")
 
     return op
