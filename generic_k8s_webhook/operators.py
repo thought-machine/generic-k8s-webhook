@@ -30,25 +30,19 @@ class Operator(abc.ABC):
 # Even if it's called BinaryOp, it supports a list of arguments of any size
 # For example: and(true, false, true, true) -> false
 class BinaryOp(Operator):
-    def __init__(self, op_inputs: Union[dict, list], path_op: str) -> None:
-        if isinstance(op_inputs, list):
-            self.args = List(op_inputs, path_op)
-        elif isinstance(op_inputs, dict):
-            self.args = parse_operator(op_inputs, path_op)
-        else:
-            raise ValueError(f"Expected dict or list as input, but got {op_inputs}")
-
+    def __init__(self, args: Operator) -> None:
+        self.args = args
         # A None return type of the arguments means that this type is not defined at "compile" time
         # A list[None] for the input_type means that this operation can potentially consume any type
         if self.args.return_type() is not None and self.input_type() != list[None]:
             # The return type of the arguments must be a list
             if get_origin(self.args.return_type()) != list:
-                raise ValueError(f"In {path_op} we expect a list as input but got {self.args.return_type()}")
+                raise TypeError(f"We expect a list as input but got {self.args.return_type()}")
             # Compare the subscripted types
             nested_input_type = get_args(self.input_type())
             nested_args_return_type = get_args(self.args.return_type())
             if not issubclass(nested_args_return_type[0], nested_input_type[0]):
-                raise RuntimeError(f"In {path_op} we expect {self.input_type()} as input but got {self.args.return_type()}")
+                raise TypeError(f"We expect {self.input_type()} as input but got {self.args.return_type()}")
 
     def get_value(self, contexts: list) -> Any:
         elem = self._neutral_elem()
@@ -66,8 +60,6 @@ class BinaryOp(Operator):
 
 
 class And(BinaryOp):
-    NAME = "and"
-
     def input_type(self) -> type:
         return list[bool]
 
@@ -82,8 +74,6 @@ class And(BinaryOp):
 
 
 class Or(BinaryOp):
-    NAME = "or"
-
     def input_type(self) -> type:
         return list[bool]
 
@@ -95,11 +85,9 @@ class Or(BinaryOp):
 
     def _neutral_elem(self):
         return False
-    
+
 
 class Equal(BinaryOp):
-    NAME = "equal"
-
     def get_value(self, contexts: list) -> Any:
         list_arg_values = self.args.get_value(contexts)
         if len(list_arg_values) < 2:
@@ -124,8 +112,6 @@ class Equal(BinaryOp):
 
 
 class Sum(BinaryOp):
-    NAME = "sum"
-
     def input_type(self) -> type:
         return list[Number]
 
@@ -140,10 +126,10 @@ class Sum(BinaryOp):
 
 
 class UnaryOp(Operator):
-    def __init__(self, op_inputs: Any, path_op: str) -> None:
-        self.arg = parse_operator(op_inputs, path_op)
+    def __init__(self, arg: Operator) -> None:
+        self.arg = arg
         if self.arg.return_type() != self.input_type():
-            raise ValueError(f"In {path_op}, expected an input type of {self.input_type()}, but got {self.arg.return_type()}")
+            raise TypeError(f"Expected an input type of {self.input_type()}, but got {self.arg.return_type()}")
 
     def get_value(self, contexts: list) -> Any:
         arg_value = self.arg.get_value(contexts)
@@ -154,8 +140,6 @@ class UnaryOp(Operator):
         pass
 
 class Not(UnaryOp):
-    NAME = "not"
-
     def input_type(self) -> type:
         return bool
 
@@ -166,13 +150,8 @@ class Not(UnaryOp):
         return not arg_value
 
 class List(Operator):
-    NAME = "list"
-
-    def __init__(self, op_spec: list, path_op: str) -> None:
-        self.list_op = []
-        for i, op in enumerate(op_spec):
-            parsed_op = parse_operator(op, f"{path_op}.{i}")
-            self.list_op.append(parsed_op)
+    def __init__(self, list_op: list[Operator]) -> None:
+        self.list_op = list_op
 
         # Get all the different return types, but ignore None, since this means
         # that the return type is not defined at "compile" time (depens on the input data)
@@ -182,7 +161,7 @@ class List(Operator):
             if op.return_type() is not None
         )
         if len(types_in_list) > 1:
-            raise RuntimeError(f"Non homogeneous return type in {path_op}")
+            raise TypeError("Non homogeneous return type")
         if len(types_in_list) == 0:
             self.item_type = None
         else:
@@ -199,16 +178,9 @@ class List(Operator):
 
 
 class ForEach(Operator):
-    NAME = "forEach"
-
-    def __init__(self, op_inputs: Any, path_op: str) -> None:
-        if "elements" not in op_inputs:
-            raise ValueError(f"The forEach placed in {path_op} required the argument 'elements'")
-        self.elements = parse_operator(op_inputs["elements"], f"{path_op}.elements")
-
-        if "op" not in op_inputs:
-            raise ValueError(f"The forEach placed in {path_op} required the argument 'op'")
-        self.op = parse_operator(op_inputs["op"], f"{path_op}.op")
+    def __init__(self, elements: Operator, op: Operator) -> None:
+        self.elements = elements
+        self.op = op
 
     def get_value(self, contexts: list):
         result_list = []
@@ -225,13 +197,9 @@ class ForEach(Operator):
 
 
 class Contain(Operator):
-    NAME = "contain"
-
-    def __init__(self, op_inputs: Any, path_op: str) -> None:
-        self.elements = utils.must_get(op_inputs, "elements",
-                                       f"The forEach placed in {path_op} required the argument 'elements'")
-        self.elem = utils.must_get(op_inputs, "value",
-                                   f"The forEach placed in {path_op} required the argument 'value'")
+    def __init__(self, elements: Operator, elem: Operator) -> None:
+        self.elements = elements
+        self.elem = elem
 
 
     def get_value(self, contexts: list):
@@ -249,10 +217,8 @@ class Contain(Operator):
 
 
 class Const(Operator):
-    NAME = "const"
-
-    def __init__(self, op_inputs: Any, path_op: str) -> None:
-        self.value = op_inputs
+    def __init__(self, value: Any) -> None:
+        self.value = value
 
     def get_value(self, contexts: list):
         return self.value
@@ -265,23 +231,9 @@ class Const(Operator):
 
 
 class GetValue(Operator):
-    NAME = "getValue"
-
-    def __init__(self, op_inputs: str, path_op: str) -> None:
-        if not isinstance(op_inputs, str):
-            raise ValueError(f"Expected to find str but got {op_inputs} in {path_op}")
-        # Split by '.', but not by '\.'
-        self.path = re.split(r"(?<!\\)\.", op_inputs)
-        # Convert the '\.' to '.'
-        self.path = [elem.replace("\\.", ".") for elem in self.path]
-
-        # Get the id of the context that it will use
-        if self.path[0] == "":
-            self.context_id = -1
-        elif self.path[0] == "$":
-            self.context_id = 0
-        else:
-            raise ValueError(f"Invalid {self.path[0]} in {path_op}")
+    def __init__(self, path: list[str], context_id: int) -> None:
+        self.path = path
+        self.context_id = context_id
 
     def get_value(self, contexts: list):
         context = contexts[self.context_id]
@@ -303,24 +255,3 @@ class GetValue(Operator):
 
     def return_type(self) -> type:
         return None
-
-
-# Magic dictionary that contains all the operators defined in this file
-DICT_OPERATORS = {}
-for _, obj in inspect.getmembers(sys.modules[__name__]):
-    if isinstance(obj, type) and issubclass(obj, Operator) and hasattr(obj, "NAME"):
-        if obj.NAME in DICT_OPERATORS:
-            raise RuntimeError(f"Duplicated operator {obj.NAME}")
-        DICT_OPERATORS[obj.NAME] = obj
-
-
-def parse_operator(op_spec: dict, path_op: str="") -> Operator:
-    if len(op_spec) != 1:
-        raise ValueError(f"Expected exactly one key under {path_op}")
-    op_name, op_spec = op_spec.popitem()
-    if op_name not in DICT_OPERATORS:
-        raise ValueError(f"The operator {op_name} from {path_op} is not defined")
-    op_class = DICT_OPERATORS[op_name]
-    op = op_class(op_spec, f"{path_op}.{op_name}")
-
-    return op

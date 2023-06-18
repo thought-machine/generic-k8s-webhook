@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 
-import generic_k8s_webhook.operators as ops
+import generic_k8s_webhook.config_parser as cfg_parser
 
 
 @pytest.mark.parametrize(("op", "inputs", "expected_result"), [
@@ -78,7 +78,7 @@ import generic_k8s_webhook.operators as ops
     )
 ])
 def test_basic_operators(op, inputs, expected_result):
-    op = ops.parse_operator({op: inputs})
+    op = cfg_parser.parse_operator({op: inputs})
     result = op.get_value([])
     assert result == expected_result
 
@@ -114,7 +114,7 @@ def test_basic_operators(op, inputs, expected_result):
     ),
 ])
 def test_path(name, contexts, path, expected_result):
-    op = ops.parse_operator({"getValue": path})
+    op = cfg_parser.parse_operator({"getValue": path})
     result = op.get_value(contexts)
     assert result == expected_result
 
@@ -158,7 +158,7 @@ def test_path(name, contexts, path, expected_result):
     ),
 ])
 def test_foreach(name, contexts, inputs, expected_result):
-    op = ops.parse_operator({"forEach": inputs})
+    op = cfg_parser.parse_operator({"forEach": inputs})
     result = op.get_value(contexts)
     assert result == expected_result
 
@@ -198,6 +198,6 @@ def test_foreach(name, contexts, inputs, expected_result):
     ),
 ])
 def test_contain(name, contexts, inputs, expected_result):
-    op = ops.parse_operator({"contain": inputs})
+    op = cfg_parser.parse_operator({"contain": inputs})
     result = op.get_value(contexts)
     assert result == expected_result

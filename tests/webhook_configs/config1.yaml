@@ -3,7 +3,6 @@ apiVersion: generic-webhook/v1alpha1
 kind: GenericWebhookConfig
 webhooks:
   - name: cmd-patch
-    port: 8888
     path: cmd-patch
     actions:
       - condition:
