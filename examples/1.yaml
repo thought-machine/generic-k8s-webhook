@@ -3,7 +3,6 @@ apiVersion: generic-webhook/v1alpha1
 kind: GenericWebhookConfig
 webhooks:
   - name: cmd-patch
-    port: 8888
     path: cmd-patch
     actions:
       # Removes the command if it performs a "sleep"
@@ -18,7 +17,7 @@ webhooks:
               const: sleep
         patch:
           op: remove
-          path: command
+          path: .command
         # No need to specify this, since we always
         # accept by default, unless there's some error
         accept: true
