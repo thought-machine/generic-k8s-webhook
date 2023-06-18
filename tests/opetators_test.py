@@ -45,6 +45,29 @@ import generic_k8s_webhook.operators as ops
         False
     ),
     (
+        "equal",
+        [
+            {"const": 1},
+        ],
+        True
+    ),
+    (
+        "equal",
+        [
+            {"const": 2},
+            {"const": 3},
+        ],
+        False
+    ),
+    (
+        "equal",
+        [
+            {"const": 4},
+            {"const": 4},
+        ],
+        True
+    ),
+    (
         "sum",
         [
             {"const": 2},

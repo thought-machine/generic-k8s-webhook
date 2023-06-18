@@ -2,7 +2,8 @@ import abc
 import inspect
 import re
 import sys
-from typing import Union, Any
+from typing import Union, Any, get_origin, get_args
+from numbers import Number
 
 
 class Operator(abc.ABC):
@@ -35,9 +36,17 @@ class BinaryOp(Operator):
         else:
             raise ValueError(f"Expected dict or list as input, but got {op_inputs}")
 
-        # A None return type for the arguments means that we have an empty list of arguments
-        if self.return_type() is not None and self.input_type() != self.args.return_type():
-            raise RuntimeError(f"In {path_op} we expect {self.input_type()} as input but got {self.args.return_type()}")
+        # A None return type of the arguments means that this type is not defined at "compile" time
+        # A list[None] for the input_type means that this operation can potentially consume any type
+        if self.args.return_type() is not None and self.input_type() != list[None]:
+            # The return type of the arguments must be a list
+            if get_origin(self.args.return_type()) != list:
+                raise ValueError(f"In {path_op} we expect a list as input but got {self.args.return_type()}")
+            # Compare the subscripted types
+            nested_input_type = get_args(self.input_type())
+            nested_args_return_type = get_args(self.args.return_type())
+            if not issubclass(nested_args_return_type[0], nested_input_type[0]):
+                raise RuntimeError(f"In {path_op} we expect {self.input_type()} as input but got {self.args.return_type()}")
 
     def get_value(self, contexts: list) -> Any:
         elem = self._neutral_elem()
@@ -84,16 +93,42 @@ class Or(BinaryOp):
 
     def _neutral_elem(self):
         return False
+    
+
+class Equal(BinaryOp):
+    NAME = "equal"
+
+    def get_value(self, contexts: list) -> Any:
+        list_arg_values = self.args.get_value(contexts)
+        if len(list_arg_values) < 2:
+            return True
+        elem_golden = list_arg_values[0]
+        for elem in list_arg_values[1:]:
+            if elem != elem_golden:
+                return False
+        return True
+
+    def input_type(self) -> type:
+        return list[None]
+
+    def return_type(self) -> type:
+        bool
+
+    def _op(self, lhs, rhs):
+        pass  # unused
+
+    def _neutral_elem(self):
+        pass  # unused
 
 
 class Sum(BinaryOp):
     NAME = "sum"
 
     def input_type(self) -> type:
-        return list[bool]
+        return list[Number]
 
     def return_type(self) -> type:
-        bool
+        Number
 
     def _op(self, lhs, rhs):
         return lhs + rhs
@@ -147,9 +182,9 @@ class List(Operator):
         if len(types_in_list) > 1:
             raise RuntimeError(f"Non homogeneous return type in {path_op}")
         if len(types_in_list) == 0:
-            self.return_type = None
+            self.item_type = None
         else:
-            self.return_type = list[types_in_list.pop()]
+            self.item_type = types_in_list.pop()
 
     def get_value(self, contexts: list):
         return [op.get_value(contexts) for op in self.list_op]
@@ -158,7 +193,7 @@ class List(Operator):
         return None
 
     def return_type(self) -> type:
-        return list[self.return_type]
+        return list[self.item_type]
 
 
 class ForEach(Operator):
