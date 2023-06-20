@@ -1,8 +1,4 @@
 import pytest
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
-
 import generic_k8s_webhook.config_parser as cfg_parser
 
 
