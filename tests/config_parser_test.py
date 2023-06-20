@@ -1,12 +1,8 @@
-import pytest
 import yaml
 import os
-import sys
+import generic_k8s_webhook.config_parser as config_parser
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(SCRIPT_DIR + "/..")
-
-import generic_k8s_webhook.config_parser as config_parser
 
 
 def get_yaml(path: str) -> dict:
