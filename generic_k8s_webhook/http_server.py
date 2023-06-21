@@ -1,10 +1,143 @@
+import base64
 import http.server
+import json
+import jsonpatch
+import logging
 import ssl
+import threading
+import yaml
+
+from generic_k8s_webhook.config_parser import Manifest, Webhook
 
 
-# TODO Create a Handler that only serves on a single path. In the future, we'll extend that,
-# so the same app will implement different webhooks. Notice that the GenericWebhookConfig
-# yaml already supports that.
+class ConfigLoader(threading.Thread):
+    def __init__(self, generic_webhook_config_file: str, refresh_period: float) -> None:
+        """A class to reload a webhook configuration in a separate thread
 
-class Handler(http.server.BaseHTTPRequestHandler):
-    pass
+        Args:
+            generic_webhook_config_file (str): The file that contains the
+            configuration of the webhook
+            refresh_period (float): The time it waits to refresh again the
+            configuration
+        """
+        super().__init__()
+        self.generic_webhook_config_file = generic_webhook_config_file
+        self.refresh_period = refresh_period
+        self.manifest: Manifest = None
+        self.lock = threading.Lock()
+        self._reload_manifest()
+        self.stop_flag = False
+        self.cond = threading.Condition()
+        self.stop_event = threading.Event()
+
+    def _reload_manifest(self) -> None:
+        with open(self.generic_webhook_config_file, "r") as f:
+            raw_manifest = yaml.safe_load(f)
+        with self.lock:
+            self.manifest = Manifest(raw_manifest)
+
+    def run(self) -> None:
+        while not self.stop_event.wait(self.refresh_period):
+            try:
+                self._reload_manifest()
+            except Exception as e:
+                logging.error(e)
+
+    def get_webhooks(self) -> list[Webhook]:
+        with self.lock:
+            return self.manifest.list_webhook_config
+
+    def stop(self) -> None:
+        self.stop_event.set()
+
+
+class BaseHandler(http.server.BaseHTTPRequestHandler):
+    CONFIG_LOADER: ConfigLoader = None
+
+    def do_POST(self):
+        try:
+            self._do_post()
+        except Exception as e:
+            logging.error(e)
+
+    def _do_post(self):
+        request_served = False
+        for webhook in self.CONFIG_LOADER.get_webhooks():
+            if webhook.path == self.path:
+                content_length = int(self.headers['Content-Length'])
+                raw_body = self.rfile.read(content_length)
+                body = json.loads(raw_body)
+                request = body["request"]
+
+                uid = request["uid"]
+                accept, patch = webhook.process_manifest(request["object"])
+                response = self._generate_response(uid, accept, patch)
+
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode("utf-8"))
+
+                request_served = True
+
+        if not request_served:
+            self.send_response(400)
+            self.end_headers()
+            logging.error(f"Wrong path {self.path}")
+
+    def _generate_response(self, uid: str, accept: bool, patch: jsonpatch.JsonPatch) -> dict:
+        response = {
+            "apiVersion": "admission.k8s.io/v1",
+            "kind": "AdmissionReview",
+            "response": {
+                "uid": uid,
+                "allowed": accept
+            }
+        }
+        if patch:
+            response["response"]["patchType"] = "JSONPatch"
+            response["response"]["patch"] = base64.b64decode(
+                patch.to_string().encode("utf-8")
+            ).decode("utf-8")
+        return response
+
+
+class Server:
+    def __init__(self, port: int, generic_webhook_config_file: str, config_refresh_period: float = 5) -> None:
+        """Validating/Mutating webhook server. It listens to requests made at port <port>
+        and sends the corresponding answer according to the configuration from
+        <generic_webhook_config_file>
+
+        Args:
+            port (int): Port where the server listens to
+
+            generic_webhook_config_file (str): File that contains the configuration for
+            the webhooks that this server must implement
+
+            config_refresh_period (float, optional): This is the time, in seconds,
+            that the system waits before reading again the webhook config file.
+            This enables changing the configuration without restarting the server.
+            Defaults to 5.
+        """
+        self.port = port
+        self.config_loader = ConfigLoader(
+            generic_webhook_config_file, config_refresh_period)
+
+        # The Handler is created and destroyed for each request processed
+        class Handler(BaseHandler):
+            CONFIG_LOADER = self.config_loader
+
+        self.httpd = http.server.HTTPServer(('localhost', self.port), Handler)
+
+    def start(self) -> None:
+        logging.info(f"Starting server that listens of port {self.port}")
+        self.config_loader.start()
+        self.httpd.serve_forever()
+        logging.info("Stopping server...")
+        self.httpd.server_close()
+        self.config_loader.join()
+        logging.info("Server stopped")
+
+    def stop(self) -> None:
+        logging.info("The server must stop")
+        self.config_loader.stop()
+        self.httpd.shutdown()
