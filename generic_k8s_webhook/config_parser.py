@@ -1,7 +1,6 @@
 import abc
 import copy
 import inspect
-import re
 import sys
 
 import generic_k8s_webhook.utils as utils
@@ -79,7 +78,7 @@ class ActionParser:
         accept = raw_config.pop("accept", True)
 
         if len(raw_config) > 0:
-            ValueError(f"Invalid fields in action {path_action}: {raw_config}")
+            raise ValueError(f"Invalid fields in action {path_action}: {raw_config}")
 
         return Action(condition, patch, accept)
 
@@ -208,13 +207,10 @@ class GetValueParser(OperatorParser):
     NAME = "getValue"
 
     @classmethod
-    def parse(cls, op_inputs: dict | list, path_op: str) -> operators.GetValue:
+    def parse(cls, op_inputs: str, path_op: str) -> operators.GetValue:
         if not isinstance(op_inputs, str):
             raise ValueError(f"Expected to find str but got {op_inputs} in {path_op}")
-        # Split by '.', but not by '\.'
-        path = re.split(r"(?<!\\)\.", op_inputs)
-        # Convert the '\.' to '.'
-        path = [elem.replace("\\.", ".") for elem in path]
+        path = utils.convert_dot_string_path_to_list(op_inputs)
 
         # Get the id of the context that it will use
         if path[0] == "":

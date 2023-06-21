@@ -61,6 +61,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
             logging.error(e)
 
     def _do_post(self):
+        logging.info(f"Processing request from {self.address_string()}")
         request_served = False
         for webhook in self.CONFIG_LOADER.get_webhooks():
             if webhook.path == self.path:
@@ -95,7 +96,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         }
         if patch:
             response["response"]["patchType"] = "JSONPatch"
-            response["response"]["patch"] = base64.b64decode(
+            response["response"]["patch"] = base64.b64encode(
                 patch.to_string().encode("utf-8")
             ).decode("utf-8")
         return response
@@ -132,7 +133,7 @@ class Server:
         logging.info(f"Starting server that listens of port {self.port}")
         self.config_loader.start()
         self.httpd.serve_forever()
-        logging.info("Stopping server...")
+        logging.info("Closing server...")
         self.httpd.server_close()
         self.config_loader.join()
         logging.info("Server stopped")
@@ -141,3 +142,4 @@ class Server:
         logging.info("The server must stop")
         self.config_loader.stop()
         self.httpd.shutdown()
+        logging.info("Shutdown completed")

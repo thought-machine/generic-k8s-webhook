@@ -183,8 +183,12 @@ class ForEach(Operator):
         self.op = op
 
     def get_value(self, contexts: list):
+        elements = self.elements.get_value(contexts)
+        if elements is None:
+            return []
+
         result_list = []
-        for elem in self.elements.get_value(contexts):
+        for elem in elements:
             mapped_elem = self.op.get_value(contexts + [elem])
             result_list.append(mapped_elem)
         return result_list
@@ -244,11 +248,16 @@ class GetValue(Operator):
             return data
 
         if isinstance(data, dict):
-            return self._get_value_from_json(data[path[0]], path[1:])
+            key = path[0]
         elif isinstance(data, list):
-            return self._get_value_from_json(data[int(path[0])], path[1:])
+            key = int(path[0])
         else:
             raise RuntimeError(f"Expected list or dict, but got {data}")
+
+        if key in data:
+            return self._get_value_from_json(data[key], path[1:])
+        else:
+            return None
 
     def input_type(self) -> type:
         return None
