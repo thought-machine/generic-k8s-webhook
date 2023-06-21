@@ -1,0 +1,139 @@
+---
+request:
+  path: /patch-node-affinity
+  body:
+    apiVersion: admission.k8s.io/v1
+    kind: AdmissionReview
+    request:
+      uid: "4321"
+      object:
+        kind: Pod
+        spec:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - preference:
+                    matchExpressions:
+                      - key: tmachine.io/aws-instance-lifecycle
+                        operator: In
+                        values:
+                          - spot
+                  weight: 1
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: tmachine.io/experiment
+                        operator: In
+                        values:
+                          - owned
+
+webhook_config:
+  apiVersion: generic-webhook/v1alpha1
+  kind: GenericWebhookConfig
+  webhooks:
+    - name: patch-node-affinity
+      path: /patch-node-affinity
+      actions:
+        - condition:
+            and:
+              # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in preferredDuringSchedulingIgnoredDuringExecution
+              - and:
+                  forEach:
+                    elements:
+                      getValue: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+                    op:
+                      and:
+                        forEach:
+                          elements:
+                            getValue: .preference.matchExpressions
+                          op:
+                            not:
+                              equal:
+                                - getValue: .key
+                                - const: tmachine.io/aws-instance-lifecycle
+
+              # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in requiredDuringSchedulingIgnoredDuringExecution
+              - and:
+                  forEach:
+                    elements:
+                      getValue: .spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
+                    op:
+                      and:
+                        forEach:
+                          elements:
+                            getValue: .matchExpressions
+                          op:
+                            not:
+                              equal:
+                                - getValue: .key
+                                - const: tmachine.io/aws-instance-lifecycle
+
+          patch:
+            - op: add
+              path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+              value:
+                preference:
+                  matchExpressions:
+                    - key: tmachine.io/aws-instance-lifecycle
+                      operator: In
+                      values:
+                        - spot
+                weight: 1
+
+cases:
+  - patches: []
+    expected_response:
+      apiVersion: admission.k8s.io/v1
+      kind: AdmissionReview
+      response:
+        uid: "4321"
+        allowed: True
+
+  - patches:
+      - key: [request, body, request, object, spec, affinity, nodeAffinity]
+        value:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: tmachine.io/aws-instance-lifecycle
+                    operator: In
+                    values:
+                      - on-demand
+    expected_response:
+      apiVersion: admission.k8s.io/v1
+      kind: AdmissionReview
+      response:
+        uid: "4321"
+        allowed: True
+
+  - patches:
+      - key:
+          [
+            request,
+            body,
+            request,
+            object,
+            spec,
+            affinity,
+            nodeAffinity,
+            preferredDuringSchedulingIgnoredDuringExecution,
+          ]
+        value: []
+    expected_response:
+      apiVersion: admission.k8s.io/v1
+      kind: AdmissionReview
+      response:
+        uid: "4321"
+        allowed: True
+        patchType: JSONPatch
+        patch:
+          - op: add
+            path: /spec/affinity/nodeAffinity/preferredDuringSchedulingIgnoredDuringExecution
+            value:
+              preference:
+                matchExpressions:
+                  - key: tmachine.io/aws-instance-lifecycle
+                    operator: In
+                    values:
+                      - spot
+              weight: 1
