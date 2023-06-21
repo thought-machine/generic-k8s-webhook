@@ -64,7 +64,7 @@ class And(BinaryOp):
         return list[bool]
 
     def return_type(self) -> type:
-        bool
+        return bool
 
     def _op(self, lhs, rhs):
         return lhs and rhs
@@ -78,7 +78,7 @@ class Or(BinaryOp):
         return list[bool]
 
     def return_type(self) -> type:
-        bool
+        return bool
 
     def _op(self, lhs, rhs):
         return lhs or rhs
@@ -102,7 +102,7 @@ class Equal(BinaryOp):
         return list[None]
 
     def return_type(self) -> type:
-        bool
+        return bool
 
     def _op(self, lhs, rhs):
         pass  # unused
@@ -116,7 +116,7 @@ class Sum(BinaryOp):
         return list[Number]
 
     def return_type(self) -> type:
-        Number
+        return Number
 
     def _op(self, lhs, rhs):
         return lhs + rhs

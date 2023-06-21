@@ -1,6 +1,5 @@
-import http.server
-import ssl
 import copy
+import jsonpatch
 from generic_k8s_webhook.operators import Operator
 
 
@@ -13,7 +12,7 @@ class Action:
     def check_condition(self, manifest: dict) -> bool:
         return self.condition.get_value([manifest])
 
-    def get_patches(self, manifest: dict) -> list[dict]:
+    def get_patches(self, manifest: dict) -> jsonpatch.JsonPatch:
         if not self.patch:
             return None
 
@@ -22,7 +21,7 @@ class Action:
         for key in ["path", "from"]:
             if key in formatted_patch:
                 formatted_patch[key] = "/" + formatted_patch[key][1:]
-        return [formatted_patch]
+        return jsonpatch.JsonPatch([formatted_patch])
 
 
 class Webhook:
@@ -31,7 +30,7 @@ class Webhook:
         self.path = path
         self.list_actions = list_actions
 
-    def process_manifest(self, manifest: dict) -> tuple[bool, list[dict]]:
+    def process_manifest(self, manifest: dict) -> tuple[bool, jsonpatch.JsonPatch]:
         for action in self.list_actions:
             if action.check_condition(manifest):
                 patches = action.get_patches(manifest)
