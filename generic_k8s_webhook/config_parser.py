@@ -3,17 +3,17 @@ import copy
 import inspect
 import sys
 
-import generic_k8s_webhook.utils as utils
-import generic_k8s_webhook.operators as operators
-from generic_k8s_webhook.webhook import Webhook, Action
+from generic_k8s_webhook import operators, utils
+from generic_k8s_webhook.webhook import Action, Webhook
 
 
 class ParsingException(Exception):
     pass
 
+
 class Manifest:
-    APIGROUP = "generic-webhook"
-    KIND = "GenericWebhookConfig"
+    EXPECTED_APIGROUP = "generic-webhook"
+    EXPECTED_KIND = "GenericWebhookConfig"
 
     def __init__(self, raw_config: dict) -> None:
         # We do a deep copy of raw_config since we remove its fields as we read them
@@ -22,38 +22,43 @@ class Manifest:
         raw_api_version = utils.must_pop(raw_config, "apiVersion", "apiVersion not defined")
 
         self.apigroup = raw_api_version.split("/")[0]
-        if self.apigroup != self.APIGROUP:
-            raise ValueError(f"Invalid apigroup {self.apigroup}. Must be {self.APIGROUP}")
+        if self.apigroup != self.EXPECTED_APIGROUP:
+            raise ValueError(f"Invalid apigroup {self.apigroup}. Must be {self.EXPECTED_APIGROUP}")
 
         self.apiversion = raw_api_version.split("/")[1]
 
         self.kind = utils.must_pop(raw_config, "kind", "kind not defined")
-        if self.kind != self.KIND:
-            raise ValueError(f"Invalid kind {self.kind}. Must be {self.KIND}")
+        if self.kind != self.EXPECTED_KIND:
+            raise ValueError(f"Invalid kind {self.kind}. Must be {self.EXPECTED_KIND}")
 
         raw_list_webhook_config = utils.must_pop(raw_config, "webhooks", "webhooks not defined")
         if not isinstance(raw_list_webhook_config, list):
             raise ValueError(f"The webhooks must be a list but it's a {type(raw_list_webhook_config)}")
-        self.list_webhook_config = [WebhookParser.parse(raw_webhook_config, f"webhooks.{i}")
-                                    for i, raw_webhook_config in enumerate(raw_list_webhook_config)]
+        self.list_webhook_config = [
+            WebhookParser.parse(raw_webhook_config, f"webhooks.{i}")
+            for i, raw_webhook_config in enumerate(raw_list_webhook_config)
+        ]
 
         if len(raw_config) > 0:
-            ValueError(f"Invalid fields at the manifest level: {raw_config}")
+            raise ValueError(f"Invalid fields at the manifest level: {raw_config}")
 
 
 class WebhookParser:
     @classmethod
-    def parse(clx, raw_config: dict, path_wh: str) -> Webhook:
+    def parse(cls, raw_config: dict, path_wh: str) -> Webhook:
         name = utils.must_pop(raw_config, "name", f"The webhook {path_wh} must have a name")
         path = utils.must_pop(raw_config, "path", f"The webhook {path_wh} must have a path")
 
-        raw_list_action_configs = utils.must_pop(raw_config, "actions",
-                                                 f"The webhook {name} must have a actions defined")
-        list_actions = [ActionParser.parse(raw_action, f"{path_wh}.actions.{i}")
-                        for i, raw_action in enumerate(raw_list_action_configs)]
+        raw_list_action_configs = utils.must_pop(
+            raw_config, "actions", f"The webhook {name} must have a actions defined"
+        )
+        list_actions = [
+            ActionParser.parse(raw_action, f"{path_wh}.actions.{i}")
+            for i, raw_action in enumerate(raw_list_action_configs)
+        ]
 
         if len(raw_config) > 0:
-            ValueError(f"Invalid fields in webhook {path_wh}: {raw_config}")
+            raise ValueError(f"Invalid fields in webhook {path_wh}: {raw_config}")
 
         return Webhook(name, path, list_actions)
 
@@ -84,14 +89,18 @@ class ActionParser:
 
 
 class OperatorParser(abc.ABC):
-    @abc.abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.Operator:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def get_name(cls) -> str:
         pass
 
 
 class BinaryOpParser(OperatorParser):
-    OPERATOR_CLS = operators.BinaryOp
-
     @classmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.BinaryOp:
         if isinstance(op_inputs, list):
@@ -102,49 +111,85 @@ class BinaryOpParser(OperatorParser):
             raise ValueError(f"Expected dict or list as input, but got {op_inputs}")
 
         try:
-            return cls.OPERATOR_CLS(args)
+            return cls.get_operator_cls()(args)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
+
+    @classmethod
+    @abc.abstractmethod
+    def get_operator_cls(cls) -> operators.BinaryOp:
+        pass
 
 
 class AndParser(BinaryOpParser):
-    NAME = "and"
-    OPERATOR_CLS = operators.And
+    @classmethod
+    def get_name(cls) -> str:
+        return "and"
+
+    @classmethod
+    def get_operator_cls(cls) -> operators.BinaryOp:
+        return operators.And
 
 
 class OrParser(BinaryOpParser):
-    NAME = "or"
-    OPERATOR_CLS = operators.Or
+    @classmethod
+    def get_name(cls) -> str:
+        return "or"
+
+    @classmethod
+    def get_operator_cls(cls) -> operators.BinaryOp:
+        return operators.Or
 
 
 class EqualParser(BinaryOpParser):
-    NAME = "equal"
-    OPERATOR_CLS = operators.Equal
+    @classmethod
+    def get_name(cls) -> str:
+        return "equal"
+
+    @classmethod
+    def get_operator_cls(cls) -> operators.BinaryOp:
+        return operators.Equal
 
 
 class SumParser(BinaryOpParser):
-    NAME = "sum"
-    OPERATOR_CLS = operators.Sum
+    @classmethod
+    def get_name(cls) -> str:
+        return "sum"
+
+    @classmethod
+    def get_operator_cls(cls) -> operators.BinaryOp:
+        return operators.Sum
 
 
 class UnaryOpParser(OperatorParser):
-    OPERATOR_CLS = operators.UnaryOp
-
     @classmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.UnaryOp:
         arg = parse_operator(op_inputs, path_op)
         try:
-            return cls.OPERATOR_CLS(arg)
+            return cls.get_operator_cls()(arg)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
+
+    @classmethod
+    @abc.abstractmethod
+    def get_operator_cls(cls) -> operators.UnaryOp:
+        pass
 
 
 class NotParser(UnaryOpParser):
-    NAME = "not"
-    OPERATOR_CLS = operators.Not
+    @classmethod
+    def get_name(cls) -> str:
+        return "not"
+
+    @classmethod
+    def get_operator_cls(cls) -> operators.UnaryOp:
+        return operators.Not
+
 
 class ListParser(OperatorParser):
-    NAME = "list"
+    @classmethod
+    def get_name(cls) -> str:
+        return "list"
 
     @classmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.List:
@@ -155,11 +200,13 @@ class ListParser(OperatorParser):
         try:
             return operators.List(list_op)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
 
 
 class ForEachParser(OperatorParser):
-    NAME = "forEach"
+    @classmethod
+    def get_name(cls) -> str:
+        return "forEach"
 
     @classmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.ForEach:
@@ -172,11 +219,13 @@ class ForEachParser(OperatorParser):
         try:
             return operators.ForEach(elements, op)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
 
 
 class ContainParser(OperatorParser):
-    NAME = "contain"
+    @classmethod
+    def get_name(cls) -> str:
+        return "contain"
 
     @classmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.Contain:
@@ -189,22 +238,26 @@ class ContainParser(OperatorParser):
         try:
             return operators.Contain(elements, elem)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
 
 
 class ConstParser(OperatorParser):
-    NAME = "const"
+    @classmethod
+    def get_name(cls) -> str:
+        return "const"
 
     @classmethod
     def parse(cls, op_inputs: dict | list, path_op: str) -> operators.Const:
         try:
             return operators.Const(op_inputs)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
 
 
 class GetValueParser(OperatorParser):
-    NAME = "getValue"
+    @classmethod
+    def get_name(cls) -> str:
+        return "getValue"
 
     @classmethod
     def parse(cls, op_inputs: str, path_op: str) -> operators.GetValue:
@@ -223,21 +276,19 @@ class GetValueParser(OperatorParser):
         try:
             return operators.GetValue(path, context_id)
         except TypeError as e:
-            raise ParsingException(f"Error when parsing {path_op}. {e}")
+            raise ParsingException(f"Error when parsing {path_op}") from e
 
 
 # Magic dictionary that contains all the operators config defined in this file
 DICT_OPERATORS = {}
 for _, obj in inspect.getmembers(sys.modules[__name__]):
-    if (isinstance(obj, type) and
-        issubclass(obj, OperatorParser) and
-        hasattr(obj, "NAME")):
-            if obj.NAME in DICT_OPERATORS:
-                raise RuntimeError(f"Duplicated operator {obj.NAME}")
-            DICT_OPERATORS[obj.NAME] = obj
+    if isinstance(obj, type) and issubclass(obj, OperatorParser) and not inspect.isabstract(obj):
+        if obj.get_name() in DICT_OPERATORS:
+            raise RuntimeError(f"Duplicated operator {obj.get_name()}")
+        DICT_OPERATORS[obj.get_name()] = obj
 
 
-def parse_operator(op_spec: dict, path_op: str="") -> operators.Operator:
+def parse_operator(op_spec: dict, path_op: str = "") -> operators.Operator:
     if len(op_spec) != 1:
         raise ValueError(f"Expected exactly one key under {path_op}")
     op_name, op_spec = op_spec.popitem()

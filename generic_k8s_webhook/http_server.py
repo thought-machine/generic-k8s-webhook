@@ -1,10 +1,10 @@
 import base64
 import http.server
 import json
-import jsonpatch
 import logging
-import ssl
 import threading
+
+import jsonpatch
 import yaml
 
 from generic_k8s_webhook.config_parser import Manifest, Webhook
@@ -31,7 +31,7 @@ class ConfigLoader(threading.Thread):
         self.stop_event = threading.Event()
 
     def _reload_manifest(self) -> None:
-        with open(self.generic_webhook_config_file, "r") as f:
+        with open(self.generic_webhook_config_file, "r", encoding="utf-8") as f:
             raw_manifest = yaml.safe_load(f)
         with self.lock:
             self.manifest = Manifest(raw_manifest)
@@ -52,7 +52,7 @@ class ConfigLoader(threading.Thread):
 
 
 class BaseHandler(http.server.BaseHTTPRequestHandler):
-    CONFIG_LOADER: ConfigLoader = None
+    CONFIG_LOADER: ConfigLoader | None = None
 
     def do_POST(self):
         try:
@@ -65,7 +65,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         request_served = False
         for webhook in self.CONFIG_LOADER.get_webhooks():
             if webhook.path == self.path:
-                content_length = int(self.headers['Content-Length'])
+                content_length = int(self.headers["Content-Length"])
                 raw_body = self.rfile.read(content_length)
                 body = json.loads(raw_body)
                 request = body["request"]
@@ -89,16 +89,11 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         response = {
             "apiVersion": "admission.k8s.io/v1",
             "kind": "AdmissionReview",
-            "response": {
-                "uid": uid,
-                "allowed": accept
-            }
+            "response": {"uid": uid, "allowed": accept},
         }
         if patch:
             response["response"]["patchType"] = "JSONPatch"
-            response["response"]["patch"] = base64.b64encode(
-                patch.to_string().encode("utf-8")
-            ).decode("utf-8")
+            response["response"]["patch"] = base64.b64encode(patch.to_string().encode("utf-8")).decode("utf-8")
         return response
 
 
@@ -120,14 +115,13 @@ class Server:
             Defaults to 5.
         """
         self.port = port
-        self.config_loader = ConfigLoader(
-            generic_webhook_config_file, config_refresh_period)
+        self.config_loader = ConfigLoader(generic_webhook_config_file, config_refresh_period)
 
         # The Handler is created and destroyed for each request processed
         class Handler(BaseHandler):
             CONFIG_LOADER = self.config_loader
 
-        self.httpd = http.server.HTTPServer(('localhost', self.port), Handler)
+        self.httpd = http.server.HTTPServer(("localhost", self.port), Handler)
 
     def start(self) -> None:
         logging.info(f"Starting server that listens of port {self.port}")
