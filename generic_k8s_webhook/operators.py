@@ -1,11 +1,6 @@
 import abc
-import inspect
-import re
-import sys
-from typing import Union, Any, get_origin, get_args
 from numbers import Number
-
-import generic_k8s_webhook.utils as utils
+from typing import Any, Union, get_args, get_origin
 
 
 class Operator(abc.ABC):
@@ -14,11 +9,11 @@ class Operator(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         pass
 
     @abc.abstractmethod
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         pass
 
     @abc.abstractmethod
@@ -60,10 +55,10 @@ class BinaryOp(Operator):
 
 
 class And(BinaryOp):
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return list[bool]
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return bool
 
     def _op(self, lhs, rhs):
@@ -74,10 +69,10 @@ class And(BinaryOp):
 
 
 class Or(BinaryOp):
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return list[bool]
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return bool
 
     def _op(self, lhs, rhs):
@@ -98,10 +93,10 @@ class Equal(BinaryOp):
                 return False
         return True
 
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return list[None]
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return bool
 
     def _op(self, lhs, rhs):
@@ -112,10 +107,10 @@ class Equal(BinaryOp):
 
 
 class Sum(BinaryOp):
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return list[Number]
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return Number
 
     def _op(self, lhs, rhs):
@@ -139,15 +134,17 @@ class UnaryOp(Operator):
     def _op(self, arg_value):
         pass
 
+
 class Not(UnaryOp):
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return bool
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return bool
 
     def _op(self, arg_value):
         return not arg_value
+
 
 class List(Operator):
     def __init__(self, list_op: list[Operator]) -> None:
@@ -155,11 +152,7 @@ class List(Operator):
 
         # Get all the different return types, but ignore None, since this means
         # that the return type is not defined at "compile" time (depens on the input data)
-        types_in_list = set(
-            op.return_type()
-            for op in self.list_op
-            if op.return_type() is not None
-        )
+        types_in_list = set(op.return_type() for op in self.list_op if op.return_type() is not None)
         if len(types_in_list) > 1:
             raise TypeError("Non homogeneous return type")
         if len(types_in_list) == 0:
@@ -170,10 +163,10 @@ class List(Operator):
     def get_value(self, contexts: list):
         return [op.get_value(contexts) for op in self.list_op]
 
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return None
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return list[self.item_type]
 
 
@@ -193,10 +186,10 @@ class ForEach(Operator):
             result_list.append(mapped_elem)
         return result_list
 
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return None
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return list[self.op.return_type()]
 
 
@@ -205,7 +198,6 @@ class Contain(Operator):
         self.elements = elements
         self.elem = elem
 
-
     def get_value(self, contexts: list):
         target_elem = self.elem.get_value(contexts)
         for elem in self.elements.get_value(contexts):
@@ -213,10 +205,10 @@ class Contain(Operator):
                 return True
         return False
 
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return None
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return bool
 
 
@@ -227,10 +219,10 @@ class Const(Operator):
     def get_value(self, contexts: list):
         return self.value
 
-    def input_type(self) -> type:
+    def input_type(self) -> type | None:
         return None
 
-    def return_type(self) -> type:
+    def return_type(self) -> type | None:
         return type(self.value)
 
 
@@ -256,11 +248,10 @@ class GetValue(Operator):
 
         if key in data:
             return self._get_value_from_json(data[key], path[1:])
-        else:
-            return None
-
-    def input_type(self) -> type:
         return None
 
-    def return_type(self) -> type:
+    def input_type(self) -> type | None:
+        return None
+
+    def return_type(self) -> type | None:
         return None

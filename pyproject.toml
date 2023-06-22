@@ -11,13 +11,27 @@ PyYAML = "^6.0"
 jsonpatch = "^1.33"
 requests = "^2.31.0"
 
-[tool.poetry.dev-dependencies]
-pytest = "^7.3.2"
-autopep8 = "^2.0.2"
-pytest-timeout = "^2.1.0"
-
 [tool.poetry.scripts]
 generic_k8s_webhook = "generic_k8s_webhook.main:main"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.2"
+pytest-timeout = "^2.1.0"
+isort = "^5.12.0"
+black = "^23.3.0"
+pylint = "^2.17.4"
+
+[tool.black]
+line-length = 120
+
+[tool.pylint]
+max-line-length = 120
+disable = """invalid-name, \
+logging-fstring-interpolation, \
+missing-module-docstring, \
+missing-class-docstring, \
+missing-function-docstring, \
+"""
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

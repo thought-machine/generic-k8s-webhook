@@ -26,7 +26,10 @@ jobs:
       - name: Install Python libraries
         run: poetry install
 
-      - name: Test
+      - name: Linter
+        run: scripts/format-code.sh --check
+
+      - name: Run unittests
         run: poetry run pytest tests --timeout 15
 
   build-docker-image:

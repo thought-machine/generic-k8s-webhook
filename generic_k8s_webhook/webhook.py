@@ -1,5 +1,7 @@
 import copy
+
 import jsonpatch
+
 from generic_k8s_webhook.operators import Operator
 from generic_k8s_webhook.utils import convert_dot_string_path_to_list
 
