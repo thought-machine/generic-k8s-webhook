@@ -17,7 +17,7 @@ autopep8 = "^2.0.2"
 pytest-timeout = "^2.1.0"
 
 [tool.poetry.scripts]
-my-script = "generic_k8s_webhook.main:main"
+generic_k8s_webhook = "generic_k8s_webhook.main:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
