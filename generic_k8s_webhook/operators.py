@@ -3,6 +3,23 @@ from numbers import Number
 from typing import Any, Union, get_args, get_origin
 
 
+def _to_number(element) -> int | float:
+    try:
+        return int(element)
+    except (ValueError, TypeError):
+        pass
+    try:
+        return float(element)
+    except (ValueError, TypeError):
+        pass
+
+    raise RuntimeError(f"Cannot convert {element} to number")
+
+
+# Make Number callable, so it can convert, for example, a string into an int or float
+Number.__call__ = _to_number
+
+
 class Operator(abc.ABC):
     @abc.abstractmethod
     def __init__(self, op_inputs: Any, path_op: str) -> None:
@@ -29,7 +46,12 @@ class BinaryOp(Operator):
         self.args = args
         # A None return type of the arguments means that this type is not defined at "compile" time
         # A list[None] for the input_type means that this operation can potentially consume any type
-        if self.args.return_type() is not None and self.input_type() != list[None]:
+        # A list[None] for the args.return_type means that we can get any type, so let's give it a try
+        if (
+            self.args.return_type() is not None
+            and self.input_type() != list[None]
+            and self.args.return_type() != list[None]
+        ):
             # The return type of the arguments must be a list
             if get_origin(self.args.return_type()) != list:
                 raise TypeError(f"We expect a list as input but got {self.args.return_type()}")
@@ -40,8 +62,29 @@ class BinaryOp(Operator):
                 raise TypeError(f"We expect {self.input_type()} as input but got {self.args.return_type()}")
 
     def get_value(self, contexts: list) -> Any:
-        elem = self._neutral_elem()
-        for arg_value in self.args.get_value(contexts):
+        elements = self.args.get_value(contexts)
+
+        # An example of elements=None is when the args is a list of elements
+        # extracted from a getValue operation. If this getValue cannot find
+        # anything for the provided path, then it returns None. In that case,
+        # None means an empty list
+        if elements is None:
+            elements = []
+
+        if not isinstance(elements, list):
+            raise TypeError(f"Expected list but got {elements}")
+
+        if len(elements) == 0:
+            return self._no_op_result()
+
+        elem = elements[0]
+        # If we have a single element, try to cast it to the type the operation
+        # should return. For example, if the element is an int and the operation
+        # returns a bool, this step will cast this int to a bool
+        if len(elements) == 1:
+            return self.return_type().__call__(elem)  # pylint: disable=unnecessary-dunder-call
+
+        for arg_value in elements[1:]:
             elem = self._op(elem, arg_value)
         return elem
 
@@ -50,7 +93,7 @@ class BinaryOp(Operator):
         pass
 
     @abc.abstractmethod
-    def _neutral_elem(self):
+    def _no_op_result(self):
         pass
 
 
@@ -64,7 +107,7 @@ class And(BinaryOp):
     def _op(self, lhs, rhs):
         return lhs and rhs
 
-    def _neutral_elem(self):
+    def _no_op_result(self):
         return True
 
 
@@ -78,8 +121,8 @@ class Or(BinaryOp):
     def _op(self, lhs, rhs):
         return lhs or rhs
 
-    def _neutral_elem(self):
-        return False
+    def _no_op_result(self):
+        return True
 
 
 class Equal(BinaryOp):
@@ -102,7 +145,7 @@ class Equal(BinaryOp):
     def _op(self, lhs, rhs):
         pass  # unused
 
-    def _neutral_elem(self):
+    def _no_op_result(self):
         pass  # unused
 
 
@@ -116,7 +159,7 @@ class Sum(BinaryOp):
     def _op(self, lhs, rhs):
         return lhs + rhs
 
-    def _neutral_elem(self):
+    def _no_op_result(self):
         return 0
 
 
