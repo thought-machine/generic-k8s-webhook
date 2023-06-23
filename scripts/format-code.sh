@@ -14,7 +14,7 @@ fi
 cd "$SCRIPTPATH/.."
 poetry run isort generic_k8s_webhook/ $($CHECK && echo "-c")
 poetry run black generic_k8s_webhook/ $($CHECK && echo "--check")
-if [ -z "$NO_CHECK" ]
+if $CHECK
 then
     poetry run pylint generic_k8s_webhook/ -E
     poetry run pylint generic_k8s_webhook/ -v --fail-under=9.5

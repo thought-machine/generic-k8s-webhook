@@ -60,7 +60,7 @@ def test_http_server(name_test, req, webhook_config, expected_response, tmp_path
         yaml.safe_dump(webhook_config, f)
 
     port = get_free_port()
-    server = Server(port, webhook_config_file)
+    server = Server(port, "", webhook_config_file)
     t = threading.Thread(target=server.start)
     t.start()
 
@@ -87,7 +87,7 @@ def test_auto_reload(tmp_path):
         yaml.safe_dump(webhook_config, f)
 
     port = get_free_port()
-    server = Server(port, webhook_config_file, config_refresh_period)
+    server = Server(port, "", webhook_config_file, config_refresh_period)
     t = threading.Thread(target=server.start)
     t.start()
 
@@ -118,7 +118,7 @@ def test_two_webhooks_same_server(tmp_path):
         yaml.safe_dump(webhook_config, f)
 
     port = get_free_port()
-    server = Server(port, webhook_config_file, config_refresh_period)
+    server = Server(port, "", webhook_config_file, config_refresh_period)
     t = threading.Thread(target=server.start)
     t.start()
 
