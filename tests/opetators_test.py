@@ -20,6 +20,18 @@ import generic_k8s_webhook.config_parser as cfg_parser
         False
     ),
     (
+        "and",
+        [
+            {"const": False},
+        ],
+        False
+    ),
+    (
+        "and",
+        [],
+        True
+    ),
+    (
         "or",
         [
             {"const": False},
@@ -36,9 +48,26 @@ import generic_k8s_webhook.config_parser as cfg_parser
         True
     ),
     (
+        "or",
+        [
+            {"const": True},
+        ],
+        True
+    ),
+    (
+        "or",
+        [],
+        True
+    ),
+    (
         "not",
         {"const": True},
         False
+    ),
+    (
+        "equal",
+        [],
+        True
     ),
     (
         "equal",
@@ -71,6 +100,18 @@ import generic_k8s_webhook.config_parser as cfg_parser
             {"const": 4},
         ],
         9
+    ),
+    (
+        "sum",
+        [
+            {"const": 2},
+        ],
+        2
+    ),
+    (
+        "sum",
+        [],
+        0
     )
 ])
 def test_basic_operators(op, inputs, expected_result):
