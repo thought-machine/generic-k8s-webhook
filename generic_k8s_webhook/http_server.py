@@ -2,6 +2,7 @@ import base64
 import http.server
 import json
 import logging
+import ssl
 import threading
 
 import jsonpatch
@@ -98,7 +99,9 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
 
 
 class Server:
-    def __init__(self, port: int, generic_webhook_config_file: str, config_refresh_period: float = 5) -> None:
+    def __init__(
+        self, port: int, certfile: str, generic_webhook_config_file: str, config_refresh_period: float = 5
+    ) -> None:
         """Validating/Mutating webhook server. It listens to requests made at port <port>
         and sends the corresponding answer according to the configuration from
         <generic_webhook_config_file>
@@ -122,6 +125,10 @@ class Server:
             CONFIG_LOADER = self.config_loader
 
         self.httpd = http.server.HTTPServer(("localhost", self.port), Handler)
+        if certfile:
+            self.httpd.socket = ssl.wrap_socket(
+                self.httpd.socket, server_side=True, certfile=certfile, ssl_version=ssl.PROTOCOL_TLSv1_2
+            )
 
     def start(self) -> None:
         logging.info(f"Starting server that listens of port {self.port}")

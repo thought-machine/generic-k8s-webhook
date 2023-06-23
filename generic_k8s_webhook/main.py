@@ -38,7 +38,7 @@ def cli(args):
 
 
 def start_server(args):
-    server = Server(args.port, args.config)
+    server = Server(args.port, args.certfile, args.config)
 
     def stop_server(*args):
         threading.Thread(target=server.stop).start()
@@ -58,6 +58,11 @@ def parse_args() -> argparse.ArgumentParser:
 
     server_subparser = subparser.add_parser("server", help="Create an http server")
     server_subparser.add_argument("--port", type=int, required=True, help="Port where the server will listen")
+    server_subparser.add_argument(
+        "--cert-file",
+        type=str,
+        help="Certificate file for the TLS connection. If not provided, the server will be a standard http one",
+    )
     server_subparser.set_defaults(func=start_server)
 
     cli_subparser = subparser.add_parser("cli", help="Use the program as a cli utility")
