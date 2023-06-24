@@ -38,7 +38,7 @@ def cli(args):
 
 
 def start_server(args):
-    server = Server(args.port, args.certfile, args.config)
+    server = Server(args.port, args.cert_file, args.key_file, args.config)
 
     def stop_server(*args):
         threading.Thread(target=server.stop).start()
@@ -62,6 +62,11 @@ def parse_args() -> argparse.ArgumentParser:
         "--cert-file",
         type=str,
         help="Certificate file for the TLS connection. If not provided, the server will be a standard http one",
+    )
+    server_subparser.add_argument(
+        "--key-file",
+        type=str,
+        help="Private key file for the TLS connection. If not provided, the server will be a standard http one",
     )
     server_subparser.set_defaults(func=start_server)
 
@@ -88,8 +93,11 @@ def parse_args() -> argparse.ArgumentParser:
 
 def main():
     args = parse_args()
+    logging.basicConfig(format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s")
     if args.verbose > 0:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(
+            format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s", level=logging.INFO
+        )
     args.func(args)
 
 

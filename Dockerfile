@@ -10,6 +10,8 @@ FROM python:3.12.0b3-slim
 
 COPY --from=builder /tmp/app/dist/ /tmp/dist
 RUN python -m pip install /tmp/dist/*.whl
+# Check the binary is available
+RUN generic_k8s_webhook --help
 
 USER 255999
 ENTRYPOINT [ "generic_k8s_webhook" ]

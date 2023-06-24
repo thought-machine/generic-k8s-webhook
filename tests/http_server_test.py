@@ -1,15 +1,13 @@
 import base64
-import copy
 import yaml
 import pytest
-from pathlib import Path
-from typing import Any
 import os
-import socket
 import threading
 import requests
 import json
 import time
+
+from test_utils import load_test_case, get_free_port
 
 from generic_k8s_webhook.http_server import Server
 
@@ -17,50 +15,18 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HTTP_SERVER_TEST_DATA_DIR = os.path.join(SCRIPT_DIR, "http_server_test_data")
 
 
-def patch_dict(d: dict, key: list, value: Any) -> None:
-    if len(key) < 1:
-        raise RuntimeError("No element in key")
-    elif len(key) == 1:
-        d[key[0]] = value
-    else:
-        patch_dict(d[key[0]], key[1:], value)
-
-
-def load_test_case(yaml_file: str) -> list[tuple]:
-    with open(yaml_file, "r") as f:
-        raw_test_case = yaml.safe_load(f)
-
-    list_cases = []
-    for i, case in enumerate(raw_test_case["cases"]):
-        all_config = copy.deepcopy(raw_test_case)
-        for patch in case["patches"]:
-            patch_dict(all_config, patch["key"], patch["value"])
-        request = all_config["request"]
-        webhook_config = all_config["webhook_config"]
-        name_test = f"{os.path.basename(yaml_file)}-case-{i}"
-        list_cases.append((name_test, request, webhook_config, case["expected_response"]))
-
-    return list_cases
-
-
-def get_free_port() -> int:
-    sock = socket.socket()
-    sock.bind(('', 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    return port
-
-
-@pytest.mark.parametrize(("name_test", "req", "webhook_config", "expected_response"),
-                         load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_1.yaml"))
-                         + load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_3.yaml")))
+@pytest.mark.parametrize(
+    ("name_test", "req", "webhook_config", "expected_response"),
+    load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_1.yaml"))
+    + load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_3.yaml")),
+)
 def test_http_server(name_test, req, webhook_config, expected_response, tmp_path):
     webhook_config_file = tmp_path / "webhook_config.yaml"
     with open(webhook_config_file, "w") as f:
         yaml.safe_dump(webhook_config, f)
 
     port = get_free_port()
-    server = Server(port, "", webhook_config_file)
+    server = Server(port, "", "", webhook_config_file)
     t = threading.Thread(target=server.start)
     t.start()
 
@@ -87,7 +53,7 @@ def test_auto_reload(tmp_path):
         yaml.safe_dump(webhook_config, f)
 
     port = get_free_port()
-    server = Server(port, "", webhook_config_file, config_refresh_period)
+    server = Server(port, "", "", webhook_config_file, config_refresh_period)
     t = threading.Thread(target=server.start)
     t.start()
 
@@ -118,7 +84,7 @@ def test_two_webhooks_same_server(tmp_path):
         yaml.safe_dump(webhook_config, f)
 
     port = get_free_port()
-    server = Server(port, "", webhook_config_file, config_refresh_period)
+    server = Server(port, "", "", webhook_config_file, config_refresh_period)
     t = threading.Thread(target=server.start)
     t.start()
 
