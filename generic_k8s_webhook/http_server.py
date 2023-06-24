@@ -42,7 +42,7 @@ class ConfigLoader(threading.Thread):
             try:
                 self._reload_manifest()
             except Exception as e:
-                logging.error(e)
+                logging.error(e, exc_info=True)
 
     def get_webhooks(self) -> list[Webhook]:
         with self.lock:
@@ -59,7 +59,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         try:
             self._do_post()
         except Exception as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
 
     def _do_post(self):
         logging.info(f"Processing request from {self.address_string()}")
@@ -100,7 +100,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
 
 class Server:
     def __init__(
-        self, port: int, certfile: str, generic_webhook_config_file: str, config_refresh_period: float = 5
+        self, port: int, certfile: str, keyfile: str, generic_webhook_config_file: str, config_refresh_period: float = 5
     ) -> None:
         """Validating/Mutating webhook server. It listens to requests made at port <port>
         and sends the corresponding answer according to the configuration from
@@ -108,6 +108,12 @@ class Server:
 
         Args:
             port (int): Port where the server listens to
+
+            certfile (str): Certifica file for the TLS connection. If not provided,
+            the server will be http, not https
+
+            keyfile (str): Key file for the TLS connection. If not provided,
+            the server will be http, not https
 
             generic_webhook_config_file (str): File that contains the configuration for
             the webhooks that this server must implement
@@ -125,10 +131,10 @@ class Server:
             CONFIG_LOADER = self.config_loader
 
         self.httpd = http.server.HTTPServer(("localhost", self.port), Handler)
-        if certfile:
-            self.httpd.socket = ssl.wrap_socket(
-                self.httpd.socket, server_side=True, certfile=certfile, ssl_version=ssl.PROTOCOL_TLSv1_2
-            )
+        if certfile and keyfile:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            context.load_cert_chain(certfile, keyfile)
+            self.httpd.socket = context.wrap_socket(self.httpd.socket, server_side=True)
 
     def start(self) -> None:
         logging.info(f"Starting server that listens of port {self.port}")

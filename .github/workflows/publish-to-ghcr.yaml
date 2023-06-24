@@ -51,7 +51,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true # push the image to ghcr
-          tags: |
+          tags: >
             ghcr.io/jordipiqueselles/generic-k8s-webhook:${{github.sha}},
             ghcr.io/jordipiqueselles/generic-k8s-webhook:${{github.ref_name}}
           labels: ${{ steps.meta.outputs.labels }}
