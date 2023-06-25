@@ -1,13 +1,13 @@
 import base64
-import yaml
-import pytest
+import json
 import os
 import threading
-import requests
-import json
 import time
 
-from test_utils import load_test_case, get_free_port, wait_for_server_ready
+import pytest
+import requests
+import yaml
+from test_utils import get_free_port, load_test_case, wait_for_server_ready
 
 from generic_k8s_webhook.http_server import Server
 

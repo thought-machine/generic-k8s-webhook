@@ -1,5 +1,7 @@
-import yaml
 import os
+
+import yaml
+
 import generic_k8s_webhook.config_parser as config_parser
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
