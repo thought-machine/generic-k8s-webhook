@@ -7,7 +7,7 @@ import requests
 import json
 import time
 
-from test_utils import load_test_case, get_free_port
+from test_utils import load_test_case, get_free_port, wait_for_server_ready
 
 from generic_k8s_webhook.http_server import Server
 
@@ -29,9 +29,10 @@ def test_http_server(name_test, req, webhook_config, expected_response, tmp_path
     server = Server(port, "", "", webhook_config_file)
     t = threading.Thread(target=server.start)
     t.start()
+    wait_for_server_ready(port)
 
     url = f"http://localhost:{port}{req['path']}"
-    response = requests.post(url, json=req["body"])
+    response = requests.post(url, json=req["body"], timeout=1)
     json_response = json.loads(response.content.decode("utf-8"))
     # If we have a "patch" field in the response, convert it from a base64 encoded string to a dict
     if "patch" in json_response["response"]:
@@ -56,6 +57,7 @@ def test_auto_reload(tmp_path):
     server = Server(port, "", "", webhook_config_file, config_refresh_period)
     t = threading.Thread(target=server.start)
     t.start()
+    wait_for_server_ready(port)
 
     for _, req, webhook_config, expected_response in list_cases:
         with open(webhook_config_file, "w") as f:
@@ -65,7 +67,7 @@ def test_auto_reload(tmp_path):
         time.sleep(config_refresh_period * 1.5)
 
         url = f"http://localhost:{port}{req['path']}"
-        response = requests.post(url, json=req["body"])
+        response = requests.post(url, json=req["body"], timeout=1)
         json_response = json.loads(response.content.decode("utf-8"))
 
         assert json_response == expected_response
@@ -87,11 +89,12 @@ def test_two_webhooks_same_server(tmp_path):
     server = Server(port, "", "", webhook_config_file, config_refresh_period)
     t = threading.Thread(target=server.start)
     t.start()
+    wait_for_server_ready(port)
 
     # In this test, we can ignore the webhook_config, since it's the same in all the cases
     for _, req, _, expected_response in list_cases:
         url = f"http://localhost:{port}{req['path']}"
-        response = requests.post(url, json=req["body"])
+        response = requests.post(url, json=req["body"], timeout=1)
         json_response = json.loads(response.content.decode("utf-8"))
 
         assert json_response == expected_response

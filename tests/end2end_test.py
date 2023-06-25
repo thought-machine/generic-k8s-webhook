@@ -13,7 +13,7 @@ import time
 import subprocess
 import signal
 
-from http_server_test import load_test_case, get_free_port
+from http_server_test import load_test_case, get_free_port, wait_for_server_ready
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HTTP_SERVER_TEST_DATA_DIR = os.path.join(SCRIPT_DIR, "http_server_test_data")
@@ -56,21 +56,14 @@ def test_http_server_e2e(name_test, req, webhook_config, expected_response, tls,
     server_shell = ServerShell(webhook_config_file, port, tls)
     t = threading.Thread(target=server_shell.start)
     t.start()
+    wait_for_server_ready(port, tls=tls)
 
     if tls:
         url = f"https://localhost:{port}{req['path']}"
     else:
         url = f"http://localhost:{port}{req['path']}"
 
-    time.sleep(0.1)
-    # Retry up to 3 times the request
-    for _ in range(3):
-        try:
-            response = requests.post(url, json=req["body"], verify=False, timeout=1)
-            break
-        except Exception:
-            time.sleep(1)
-
+    response = requests.post(url, json=req["body"], verify=False, timeout=1)
     json_response = json.loads(response.content.decode("utf-8"))
     # If we have a "patch" field in the response, convert it from a base64 encoded string to a dict
     if "patch" in json_response["response"]:

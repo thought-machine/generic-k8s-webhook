@@ -1,6 +1,8 @@
 import copy
 import os
+import requests
 import socket
+import time
 from typing import Any
 import yaml
 
@@ -37,3 +39,21 @@ def get_free_port() -> int:
     port = sock.getsockname()[1]
     sock.close()
     return port
+
+
+def wait_for_server_ready(port: int, tls: bool = False) -> None:
+    if tls:
+        url = f"https://localhost:{port}/healthz"
+    else:
+        url = f"http://localhost:{port}/healthz"
+    for _ in range(20):
+        try:
+            response = requests.get(url, verify=False, timeout=1)
+            if response.status_code == 200:
+                break
+        except:
+            pass
+        time.sleep(0.1)
+    response = requests.get(url, verify=False, timeout=1)
+    if response.status_code != 200:
+        raise RuntimeError(f"Error when doing the health check to the server. Error {response.status_code}")
