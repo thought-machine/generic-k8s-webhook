@@ -24,7 +24,7 @@ class ConfigLoader(threading.Thread):
         super().__init__()
         self.generic_webhook_config_file = generic_webhook_config_file
         self.refresh_period = refresh_period
-        self.manifest: Manifest = None
+        self.manifest: Manifest | None = None
         self.lock = threading.Lock()
         self._reload_manifest()
         self.stop_flag = False
@@ -54,6 +54,20 @@ class ConfigLoader(threading.Thread):
 
 class BaseHandler(http.server.BaseHTTPRequestHandler):
     CONFIG_LOADER: ConfigLoader | None = None
+    HEALTHZ = "/healthz"
+
+    def do_GET(self):
+        try:
+            self._do_get()
+        except Exception as e:
+            logging.error(e, exc_info=True)
+
+    def _do_get(self):
+        if self.path == self.HEALTHZ:
+            self._healthz()
+        else:
+            self.send_response(400)
+            self.end_headers()
 
     def do_POST(self):
         try:
@@ -96,6 +110,11 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
             response["response"]["patchType"] = "JSONPatch"
             response["response"]["patch"] = base64.b64encode(patch.to_string().encode("utf-8")).decode("utf-8")
         return response
+
+    def _healthz(self) -> None:
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write("I'm alive\n".encode("utf-8"))
 
 
 class Server:
