@@ -8,7 +8,7 @@ import threading
 import yaml
 
 from generic_k8s_webhook import __version__
-from generic_k8s_webhook.config_parser import Manifest
+from generic_k8s_webhook.config_parser import GenericWebhookConfigManifest
 from generic_k8s_webhook.http_server import Server
 
 
@@ -18,7 +18,7 @@ def cli(args):
     with open(args.k8s_manifest, "r", encoding="utf-8") as f:
         k8s_manifest = yaml.safe_load(f)
 
-    config = Manifest(raw_config)
+    config = GenericWebhookConfigManifest(raw_config)
     for webhook in config.list_webhook_config:
         if webhook.name == args.wh_name:
             accept, patch = webhook.process_manifest(k8s_manifest)

@@ -11,7 +11,7 @@ class ParsingException(Exception):
     pass
 
 
-class Manifest:
+class GenericWebhookConfigManifest:
     EXPECTED_APIGROUP = "generic-webhook"
     EXPECTED_KIND = "GenericWebhookConfig"
 

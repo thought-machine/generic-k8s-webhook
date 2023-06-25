@@ -14,10 +14,10 @@ request:
               preferredDuringSchedulingIgnoredDuringExecution:
                 - preference:
                     matchExpressions:
-                      - key: tmachine.io/aws-instance-lifecycle
+                      - key: myorg.io/instance-cost
                         operator: In
                         values:
-                          - spot
+                          - cheap
                   weight: 1
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
@@ -36,7 +36,7 @@ webhook_config:
       actions:
         - condition:
             and:
-              # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in preferredDuringSchedulingIgnoredDuringExecution
+              # {key: myorg.io/instance-cost} doesn't appear in preferredDuringSchedulingIgnoredDuringExecution
               - and:
                   forEach:
                     elements:
@@ -50,9 +50,9 @@ webhook_config:
                             not:
                               equal:
                                 - getValue: .key
-                                - const: tmachine.io/aws-instance-lifecycle
+                                - const: myorg.io/instance-cost
 
-              # {key: tmachine.io/aws-instance-lifecycle} doesn't appear in requiredDuringSchedulingIgnoredDuringExecution
+              # {key: myorg.io/instance-cost} doesn't appear in requiredDuringSchedulingIgnoredDuringExecution
               - and:
                   forEach:
                     elements:
@@ -66,7 +66,7 @@ webhook_config:
                             not:
                               equal:
                                 - getValue: .key
-                                - const: tmachine.io/aws-instance-lifecycle
+                                - const: myorg.io/instance-cost
 
           patch:
             - op: add
@@ -74,10 +74,10 @@ webhook_config:
               value:
                 preference:
                   matchExpressions:
-                    - key: tmachine.io/aws-instance-lifecycle
+                    - key: myorg.io/instance-cost
                       operator: In
                       values:
-                        - spot
+                        - cheap
                 weight: 1
 
 cases:
@@ -95,7 +95,7 @@ cases:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: tmachine.io/aws-instance-lifecycle
+                  - key: myorg.io/instance-cost
                     operator: In
                     values:
                       - on-demand
@@ -132,8 +132,8 @@ cases:
             value:
               preference:
                 matchExpressions:
-                  - key: tmachine.io/aws-instance-lifecycle
+                  - key: myorg.io/instance-cost
                     operator: In
                     values:
-                      - spot
+                      - cheap
               weight: 1
