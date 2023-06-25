@@ -15,7 +15,7 @@ def get_yaml(path: str) -> dict:
 
 def test_valid_config():
     raw_config = get_yaml("webhook_configs/config1.yaml")
-    config = config_parser.Manifest(raw_config)
+    config = config_parser.GenericWebhookConfigManifest(raw_config)
     assert config.apigroup == "generic-webhook"
     assert config.apiversion == "v1alpha1"
     assert config.kind == raw_config["kind"]

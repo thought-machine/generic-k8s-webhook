@@ -8,7 +8,7 @@ import threading
 import jsonpatch
 import yaml
 
-from generic_k8s_webhook.config_parser import Manifest, Webhook
+from generic_k8s_webhook.config_parser import GenericWebhookConfigManifest, Webhook
 
 
 class ConfigLoader(threading.Thread):
@@ -24,7 +24,7 @@ class ConfigLoader(threading.Thread):
         super().__init__()
         self.generic_webhook_config_file = generic_webhook_config_file
         self.refresh_period = refresh_period
-        self.manifest: Manifest | None = None
+        self.manifest: GenericWebhookConfigManifest | None = None
         self.lock = threading.Lock()
         self._reload_manifest()
         self.stop_flag = False
@@ -35,7 +35,7 @@ class ConfigLoader(threading.Thread):
         with open(self.generic_webhook_config_file, "r", encoding="utf-8") as f:
             raw_manifest = yaml.safe_load(f)
         with self.lock:
-            self.manifest = Manifest(raw_manifest)
+            self.manifest = GenericWebhookConfigManifest(raw_manifest)
 
     def run(self) -> None:
         while not self.stop_event.wait(self.refresh_period):

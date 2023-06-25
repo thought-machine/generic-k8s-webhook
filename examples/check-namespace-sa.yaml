@@ -1,0 +1,17 @@
+apiVersion: generic-webhook/v1alpha1
+kind: GenericWebhookConfig
+webhooks:
+  - name: check-namespace-sa
+    path: /check-namespace-sa
+    actions:
+      # Refuse the request if it's a ServiceAccount that
+      # is placed on the "kube-system" namespace
+      - condition:
+          and:
+            - equal:
+                - getValue: .metadata.namespace
+                - const: kube-system
+            - equal:
+                - getValue: .kind
+                - const: ServiceAccount
+        accept: false
