@@ -69,3 +69,13 @@ def test_http_server_e2e(name_test, req, webhook_config, expected_response, tls,
     server_shell.stop()
     server_shell.wait_to_finish()
     t.join()
+
+
+def test_cli_program_version():
+    cmd = f"poetry run python3 {MAIN_PY} --version"
+    subprocess.run(cmd, shell=True, check=True)
+
+
+def test_cli_help():
+    cmd = f"poetry run python3 {MAIN_PY} --help"
+    subprocess.run(cmd, shell=True, check=True)

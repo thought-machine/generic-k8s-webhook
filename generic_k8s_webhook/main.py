@@ -7,6 +7,7 @@ import threading
 
 import yaml
 
+from generic_k8s_webhook import __version__
 from generic_k8s_webhook.config_parser import Manifest
 from generic_k8s_webhook.http_server import Server
 
@@ -53,6 +54,7 @@ def parse_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Program to validate and/or modify K8S manifests")
     subparser = parser.add_subparsers(help="Program mode")
 
+    parser.add_argument("--version", action="version", version=f"{__version__}")
     parser.add_argument("--config", type=str, required=True, help="GenericWebhookConfig config file")
     parser.add_argument("--verbose", "-v", action="count", default=0)
 
