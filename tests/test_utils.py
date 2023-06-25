@@ -1,9 +1,10 @@
 import copy
 import os
-import requests
 import socket
 import time
 from typing import Any
+
+import requests
 import yaml
 
 

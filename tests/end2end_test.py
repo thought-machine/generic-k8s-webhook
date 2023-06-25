@@ -1,19 +1,14 @@
 import base64
-import copy
-import yaml
-import pytest
-from pathlib import Path
-from typing import Any
-import os
-import socket
-import threading
-import requests
 import json
-import time
-import subprocess
+import os
 import signal
+import subprocess
+import threading
 
-from http_server_test import load_test_case, get_free_port, wait_for_server_ready
+import pytest
+import requests
+import yaml
+from http_server_test import get_free_port, load_test_case, wait_for_server_ready
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HTTP_SERVER_TEST_DATA_DIR = os.path.join(SCRIPT_DIR, "http_server_test_data")

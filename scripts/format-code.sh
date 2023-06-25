@@ -12,8 +12,8 @@ else
 fi
 
 cd "$SCRIPTPATH/.."
-poetry run isort generic_k8s_webhook/ $($CHECK && echo "-c")
-poetry run black generic_k8s_webhook/ $($CHECK && echo "--check")
+poetry run isort generic_k8s_webhook/ tests/ $($CHECK && echo "-c")
+poetry run black generic_k8s_webhook/ tests/ $($CHECK && echo "--check")
 if $CHECK
 then
     poetry run pylint generic_k8s_webhook/ -E
