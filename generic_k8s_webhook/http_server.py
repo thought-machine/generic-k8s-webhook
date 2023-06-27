@@ -4,6 +4,7 @@ import json
 import logging
 import ssl
 import threading
+from urllib.parse import urlparse
 
 import jsonpatch
 import yaml
@@ -63,7 +64,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
             logging.error(e, exc_info=True)
 
     def _do_get(self):
-        if self.path == self.HEALTHZ:
+        if self._get_path() == self.HEALTHZ:
             self._healthz()
         else:
             self.send_response(400)
@@ -79,7 +80,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         logging.info(f"Processing request from {self.address_string()}")
         request_served = False
         for webhook in self.CONFIG_LOADER.get_webhooks():
-            if webhook.path == self.path:
+            if self._get_path() == webhook.path:
                 content_length = int(self.headers["Content-Length"])
                 raw_body = self.rfile.read(content_length)
                 body = json.loads(raw_body)
@@ -116,6 +117,10 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write("I'm alive\n".encode("utf-8"))
 
+    def _get_path(self) -> str:
+        parsed_url = urlparse(self.path)
+        return parsed_url.path
+
 
 class Server:
     def __init__(
@@ -149,7 +154,7 @@ class Server:
         class Handler(BaseHandler):
             CONFIG_LOADER = self.config_loader
 
-        self.httpd = http.server.HTTPServer(("localhost", self.port), Handler)
+        self.httpd = http.server.HTTPServer(("0.0.0.0", self.port), Handler)
         if certfile and keyfile:
             context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             context.load_cert_chain(certfile, keyfile)
