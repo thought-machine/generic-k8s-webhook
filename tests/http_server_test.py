@@ -31,14 +31,18 @@ def test_http_server(name_test, req, webhook_config, expected_response, tmp_path
     t.start()
     wait_for_server_ready(port)
 
-    url = f"http://localhost:{port}{req['path']}"
-    response = requests.post(url, json=req["body"], timeout=1)
-    json_response = json.loads(response.content.decode("utf-8"))
-    # If we have a "patch" field in the response, convert it from a base64 encoded string to a dict
-    if "patch" in json_response["response"]:
-        json_response["response"]["patch"] = json.loads(base64.b64decode(json_response["response"]["patch"]))
+    # Check the server behaves correctly when we send (or not) http parameters
+    for url_params in ["", "?param1=value1"]:
+        url = f"http://localhost:{port}{req['path']}{url_params}"
+        response = requests.post(url, json=req["body"], timeout=1)
+        assert response.status_code == 200, f"Status code {response.status_code} when doing POST to {url}"
 
-    assert json_response == expected_response
+        json_response = json.loads(response.content.decode("utf-8"))
+        # If we have a "patch" field in the response, convert it from a base64 encoded string to a dict
+        if "patch" in json_response["response"]:
+            json_response["response"]["patch"] = json.loads(base64.b64decode(json_response["response"]["patch"]))
+
+        assert json_response == expected_response
 
     server.stop()
     t.join()
