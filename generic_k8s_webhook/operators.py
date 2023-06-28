@@ -2,22 +2,10 @@ import abc
 from numbers import Number
 from typing import Any, Union, get_args, get_origin
 
-
-def _to_number(element) -> int | float:
-    try:
-        return int(element)
-    except (ValueError, TypeError):
-        pass
-    try:
-        return float(element)
-    except (ValueError, TypeError):
-        pass
-
-    raise RuntimeError(f"Cannot convert {element} to number")
-
+from generic_k8s_webhook.utils import to_number
 
 # Make Number callable, so it can convert, for example, a string into an int or float
-Number.__call__ = _to_number
+Number.__call__ = to_number
 
 
 class Operator(abc.ABC):
