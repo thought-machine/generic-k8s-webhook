@@ -10,7 +10,7 @@ webhooks:
             - getValue: .metadata.name
             - const: my-app
         patch:
-          op: replace
-          path: .metadata.name
-          value: my-awesome-app
+          - op: replace
+            path: .metadata.name
+            value: my-awesome-app
         accept: true

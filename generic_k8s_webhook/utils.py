@@ -20,3 +20,16 @@ def convert_dot_string_path_to_list(dot_string_path: str) -> list[str]:
     # Convert the '\.' to '.'
     path = [elem.replace("\\.", ".") for elem in path]
     return path
+
+
+def to_number(element) -> int | float:
+    try:
+        return int(element)
+    except (ValueError, TypeError):
+        pass
+    try:
+        return float(element)
+    except (ValueError, TypeError):
+        pass
+
+    raise RuntimeError(f"Cannot convert {element} to number")

@@ -70,7 +70,7 @@ webhook_config:
 
           patch:
             - op: add
-              path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
+              path: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution.-
               value:
                 preference:
                   matchExpressions:
@@ -128,7 +128,7 @@ cases:
         patchType: JSONPatch
         patch:
           - op: add
-            path: /spec/affinity/nodeAffinity/preferredDuringSchedulingIgnoredDuringExecution
+            path: /spec/affinity/nodeAffinity/preferredDuringSchedulingIgnoredDuringExecution/-
             value:
               preference:
                 matchExpressions:
@@ -137,3 +137,34 @@ cases:
                     values:
                       - cheap
               weight: 1
+
+  - patches:
+      - key:
+          [
+            request,
+            body,
+            request,
+            object,
+            spec,
+            affinity,
+          ]
+        value: {}
+    expected_response:
+      apiVersion: admission.k8s.io/v1
+      kind: AdmissionReview
+      response:
+        uid: "4321"
+        allowed: True
+        patchType: JSONPatch
+        patch:
+          - op: add
+            path: /spec/affinity/nodeAffinity
+            value:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - preference:
+                    matchExpressions:
+                      - key: myorg.io/instance-cost
+                        operator: In
+                        values:
+                          - cheap
+                  weight: 1
