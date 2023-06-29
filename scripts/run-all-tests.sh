@@ -6,6 +6,7 @@ SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 
 cd "$SCRIPTPATH/.."
+./scripts/check-pyproject.sh
 echo "Running linter"
 ./scripts/format-code.sh --check
 echo "Running unittests and e2e tests"

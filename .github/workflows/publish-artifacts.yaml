@@ -26,6 +26,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
 
+      - name: Write version
+        run: ./scripts/insert-version-pyproject.sh ${{github.ref_name}}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
