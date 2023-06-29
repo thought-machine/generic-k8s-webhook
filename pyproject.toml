@@ -1,6 +1,7 @@
 [tool.poetry]
 name = "generic_k8s_webhook"
-version = "0.1.0"
+# This is substituted in the publish-artifacts pipeline by the current git tag
+version = "0.0.0"
 description = "Configurable webhook that can implement multiple validators and mutators using a simple yaml config file"
 authors = ["jordi <jordipiqueselles@gmail.com>"]
 license = "Apache License"
