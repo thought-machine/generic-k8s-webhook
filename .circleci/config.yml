@@ -29,10 +29,16 @@ jobs:
 
 workflows:
   version: 2
-  build-master:
+  build-branch:
+    jobs:
+      - build
+
+  build-on-tag:
     jobs:
       - build_and_release:
           context: conntest-dockerhub-release
           filters:
             tags:
               only: /.*/
+            branches:
+              ignore: /.*/
