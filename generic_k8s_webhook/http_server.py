@@ -9,7 +9,8 @@ from urllib.parse import urlparse
 import jsonpatch
 import yaml
 
-from generic_k8s_webhook.config_parser import GenericWebhookConfigManifest, Webhook
+from generic_k8s_webhook.config_parser.entrypoint import GenericWebhookConfigManifest
+from generic_k8s_webhook.webhook import Webhook
 
 
 class ConfigLoader(threading.Thread):

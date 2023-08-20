@@ -2,7 +2,7 @@ import os
 
 import yaml
 
-import generic_k8s_webhook.config_parser as config_parser
+from generic_k8s_webhook.config_parser.entrypoint import GenericWebhookConfigManifest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -15,7 +15,7 @@ def get_yaml(path: str) -> dict:
 
 def test_valid_config():
     raw_config = get_yaml("webhook_configs/config1.yaml")
-    config = config_parser.GenericWebhookConfigManifest(raw_config)
+    config = GenericWebhookConfigManifest(raw_config)
     assert config.apigroup == "generic-webhook"
     assert config.apiversion == "v1alpha1"
     assert config.kind == raw_config["kind"]

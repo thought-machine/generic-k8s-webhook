@@ -3,7 +3,7 @@ import os
 import pytest
 import yaml
 
-from generic_k8s_webhook.config_parser import GenericWebhookConfigManifest
+from generic_k8s_webhook.config_parser.entrypoint import GenericWebhookConfigManifest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXAMPLES_DIR = os.path.join(SCRIPT_DIR, "../examples")

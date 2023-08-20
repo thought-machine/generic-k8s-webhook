@@ -35,6 +35,7 @@ logging-fstring-interpolation, \
 missing-module-docstring, \
 missing-class-docstring, \
 missing-function-docstring, \
+too-few-public-methods, \
 """
 
 [build-system]
