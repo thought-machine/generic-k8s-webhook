@@ -1,6 +1,6 @@
 import pytest
 
-from generic_k8s_webhook.config_parser import JsonPatchParser
+from generic_k8s_webhook.config_parser.jsonpatch_parser import JsonPatchParserV1
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ from generic_k8s_webhook.config_parser import JsonPatchParser
 )
 def test_add(name, json_to_patch, patch, expected_result):
     assert all(elem["op"] == "add" for elem in patch)
-    patcher = JsonPatchParser.parse(patch)[0]
+    patcher = JsonPatchParserV1().parse(patch)[0]
     processed_patch = patcher.generate_patch(json_to_patch)
     patched_json = processed_patch.apply(json_to_patch)
     assert patched_json == expected_result
@@ -85,7 +85,7 @@ def test_add(name, json_to_patch, patch, expected_result):
 )
 def test_remove(name, json_to_patch, patch, expected_result):
     assert all(elem["op"] == "remove" for elem in patch)
-    patcher = JsonPatchParser.parse(patch)[0]
+    patcher = JsonPatchParserV1().parse(patch)[0]
     processed_patch = patcher.generate_patch(json_to_patch)
     patched_json = processed_patch.apply(json_to_patch)
     assert patched_json == expected_result
@@ -104,7 +104,7 @@ def test_remove(name, json_to_patch, patch, expected_result):
 )
 def test_replace(name, json_to_patch, patch, expected_result):
     assert all(elem["op"] == "replace" for elem in patch)
-    patcher = JsonPatchParser.parse(patch)[0]
+    patcher = JsonPatchParserV1().parse(patch)[0]
     processed_patch = patcher.generate_patch(json_to_patch)
     patched_json = processed_patch.apply(json_to_patch)
     assert patched_json == expected_result
@@ -123,7 +123,7 @@ def test_replace(name, json_to_patch, patch, expected_result):
 )
 def test_copy(name, json_to_patch, patch, expected_result):
     assert all(elem["op"] == "copy" for elem in patch)
-    patcher = JsonPatchParser.parse(patch)[0]
+    patcher = JsonPatchParserV1().parse(patch)[0]
     processed_patch = patcher.generate_patch(json_to_patch)
     patched_json = processed_patch.apply(json_to_patch)
     assert patched_json == expected_result
@@ -142,7 +142,7 @@ def test_copy(name, json_to_patch, patch, expected_result):
 )
 def test_move(name, json_to_patch, patch, expected_result):
     assert all(elem["op"] == "move" for elem in patch)
-    patcher = JsonPatchParser.parse(patch)[0]
+    patcher = JsonPatchParserV1().parse(patch)[0]
     processed_patch = patcher.generate_patch(json_to_patch)
     patched_json = processed_patch.apply(json_to_patch)
     assert patched_json == expected_result
@@ -161,7 +161,7 @@ def test_move(name, json_to_patch, patch, expected_result):
 )
 def test_test(name, json_to_patch, patch, expected_result):
     assert all(elem["op"] == "test" for elem in patch)
-    patcher = JsonPatchParser.parse(patch)[0]
+    patcher = JsonPatchParserV1().parse(patch)[0]
     processed_patch = patcher.generate_patch(json_to_patch)
     patched_json = processed_patch.apply(json_to_patch)
     assert patched_json == expected_result

@@ -73,8 +73,10 @@ docker build -t generic-k8s-webhook:latest .
 
 The [webhook.py](../generic_k8s_webhook/webhook.py) contains the classes that implement the configuration specified in a `<GenericWebhookConfigFile>`. For example, the class `Webhook` implements a given element from the list `webhooks` from the config yaml file. The class `Action` implements a given element from the list `actions`. The [operators.py](../generic_k8s_webhook/operators.py) contains the classes that implement the operators used to specify conditions in the webhook config.
 
-However, none of these classes have a direct dependency to the structure of the `<GenericWebhookConfigFile>`. The glue between them can be found in [config_parser.py](../generic_k8s_webhook/config_parser.py). This file contains the classes that parse the `<GenericWebhookConfigFile>`, check its structure is valid, resolves the default values and, finally, generates the corresponding object (a class from `webhook.py` or `operators.py`).
+However, none of these classes have a direct dependency to the structure of the `<GenericWebhookConfigFile>`. The glue between them can be found in [config_parser](../generic_k8s_webhook/config_parser/). This directory contains the classes that parse the `<GenericWebhookConfigFile>` according to the `apiVersion`, check its structure is valid, resolves the default values and, finally, generates the corresponding object (a class from `webhook.py` or `operators.py`).
 
-In case you want to add a new operator, you need to create a new class in `config_parser.py` to parse it and another class in `operators.py` to implement its logic.
+In case you want to add a new operator, you need to create a new class in [operator_parser.py](../generic_k8s_webhook/config_parser/operator_parser.py) to parse it and another class in `operators.py` to implement its logic.
+
+If there's any modification in the schema of the `<GenericWebhookConfigFile>` yaml file, then we must create a new version for `apiVersion`. The [GenericWebhookConfigManifest](../generic_k8s_webhook/config_parser/entrypoint.py) class will implement a function that instantiates the different subparsers that will parse this new schema version.
 
 This structure helps decoupling the `<GenericWebhookConfigFile>` from the core of the app, so new versions of the schema corresponding to `<GenericWebhookConfigFile>` won't need a complete rewrite of our code.

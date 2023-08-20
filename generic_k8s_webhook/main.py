@@ -8,7 +8,7 @@ import threading
 import yaml
 
 from generic_k8s_webhook import __version__
-from generic_k8s_webhook.config_parser import GenericWebhookConfigManifest
+from generic_k8s_webhook.config_parser.entrypoint import GenericWebhookConfigManifest
 from generic_k8s_webhook.http_server import Server
 
 
