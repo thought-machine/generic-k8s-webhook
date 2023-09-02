@@ -37,17 +37,29 @@ class BinaryOp(Operator):
         # A list[None] for the args.return_type means that we can get any type, so let's give it a try
         if (
             self.args.return_type() is not None
-            and self.input_type() != list[None]
             and self.args.return_type() != list[None]
+            and self.input_type() is not None
+            and self.input_type() != list[None]
         ):
-            # The return type of the arguments must be a list
-            if get_origin(self.args.return_type()) != list:
-                raise TypeError(f"We expect a list as input but got {self.args.return_type()}")
-            # Compare the subscripted types
-            nested_input_type = get_args(self.input_type())
-            nested_args_return_type = get_args(self.args.return_type())
-            if not issubclass(nested_args_return_type[0], nested_input_type[0]):
-                raise TypeError(f"We expect {self.input_type()} as input but got {self.args.return_type()}")
+            # Compare the origin types. The origin or `list[int]` is `list`
+            origin_input_type = get_origin(self.input_type())
+            origin_args_ret_type = get_origin(self.args.return_type())
+            if origin_input_type != origin_args_ret_type:
+                raise TypeError(f"We expect a {self.input_type()} as input but got {self.args.return_type()}")
+
+            # Compare the subscripted types. The subscripted type of `list[int, float]` are `int, float`
+            list_nested_input_type = get_args(self.input_type())
+            list_nested_args_return_types = get_args(self.args.return_type())
+            # Check that all the subscripted types of the arguments match at least one of
+            # the subscripted types that this operator expects as input
+            for nested_args_ret_type in list_nested_args_return_types:
+                type_match = False
+                for nested_input_type in list_nested_input_type:
+                    if issubclass(nested_args_ret_type, nested_input_type):
+                        type_match = True
+                        break
+                if not type_match:
+                    raise TypeError(f"We expect {self.input_type()} as input but got {self.args.return_type()}")
 
     def get_value(self, contexts: list) -> Any:
         elements = self.args.get_value(contexts)
@@ -63,7 +75,7 @@ class BinaryOp(Operator):
             raise TypeError(f"Expected list but got {elements}")
 
         if len(elements) == 0:
-            return self._no_op_result()
+            return self._zero_args_result()
 
         elem = elements[0]
         # If we have a single element, try to cast it to the type the operation
@@ -80,49 +92,75 @@ class BinaryOp(Operator):
     def _op(self, lhs, rhs):
         pass
 
-    @abc.abstractmethod
-    def _no_op_result(self):
-        pass
+    def _zero_args_result(self):
+        """The value returned when there are 0 arguments in the operator"""
+        return self.return_type().__call__()  # pylint: disable=unnecessary-dunder-call
 
 
-class And(BinaryOp):
+class BoolOp(BinaryOp):
     def input_type(self) -> type | None:
         return list[bool]
 
     def return_type(self) -> type | None:
         return bool
 
+
+class And(BoolOp):
     def _op(self, lhs, rhs):
         return lhs and rhs
 
-    def _no_op_result(self):
+    def _zero_args_result(self):
         return True
 
 
-class Or(BinaryOp):
-    def input_type(self) -> type | None:
-        return list[bool]
-
-    def return_type(self) -> type | None:
-        return bool
-
+class Or(BoolOp):
     def _op(self, lhs, rhs):
         return lhs or rhs
 
-    def _no_op_result(self):
+    def _zero_args_result(self):
         return True
 
 
-class Equal(BinaryOp):
+class ArithOp(BinaryOp):
+    def input_type(self) -> type | None:
+        return list[Number]
+
+    def return_type(self) -> type | None:
+        return Number
+
+    def _zero_args_result(self) -> Number:
+        return 0
+
+
+class Sum(ArithOp):
+    def _op(self, lhs, rhs):
+        return lhs + rhs
+
+
+class Sub(ArithOp):
+    def _op(self, lhs, rhs):
+        return lhs - rhs
+
+
+class Mul(ArithOp):
+    def _op(self, lhs, rhs):
+        return lhs * rhs
+
+
+class Div(ArithOp):
+    def _op(self, lhs, rhs):
+        return lhs / rhs
+
+
+class Comp(BinaryOp):
     def get_value(self, contexts: list) -> Any:
         list_arg_values = self.args.get_value(contexts)
         if len(list_arg_values) < 2:
             return True
-        elem_golden = list_arg_values[0]
-        for elem in list_arg_values[1:]:
-            if elem != elem_golden:
-                return False
-        return True
+        elif len(list_arg_values) == 2:
+            return self._op(list_arg_values[0], list_arg_values[1])
+        else:
+            raise ValueError("A comparison cannot have more than 2 operands")
 
     def input_type(self) -> type | None:
         return list[None]
@@ -130,25 +168,35 @@ class Equal(BinaryOp):
     def return_type(self) -> type | None:
         return bool
 
+
+class Equal(Comp):
     def _op(self, lhs, rhs):
-        pass  # unused
-
-    def _no_op_result(self):
-        pass  # unused
+        return lhs == rhs
 
 
-class Sum(BinaryOp):
-    def input_type(self) -> type | None:
-        return list[Number]
-
-    def return_type(self) -> type | None:
-        return Number
-
+class NotEqual(Comp):
     def _op(self, lhs, rhs):
-        return lhs + rhs
+        return lhs != rhs
 
-    def _no_op_result(self):
-        return 0
+
+class LessOrEqual(Comp):
+    def _op(self, lhs, rhs):
+        return lhs <= rhs
+
+
+class GreaterOrEqual(Comp):
+    def _op(self, lhs, rhs):
+        return lhs >= rhs
+
+
+class LessThan(Comp):
+    def _op(self, lhs, rhs):
+        return lhs < rhs
+
+
+class GreaterThan(Comp):
+    def _op(self, lhs, rhs):
+        return lhs > rhs
 
 
 class UnaryOp(Operator):
@@ -184,12 +232,12 @@ class List(Operator):
         # Get all the different return types, but ignore None, since this means
         # that the return type is not defined at "compile" time (depens on the input data)
         types_in_list = set(op.return_type() for op in self.list_op if op.return_type() is not None)
-        if len(types_in_list) > 1:
-            raise TypeError("Non homogeneous return type")
         if len(types_in_list) == 0:
-            self.item_type = None
+            self.item_types = list[None]
         else:
-            self.item_type = types_in_list.pop()
+            # For example, if `types_in_list={int, float}`, then
+            # `self.item_types=list[int, float]`
+            self.item_types = list[*list(types_in_list)]
 
     def get_value(self, contexts: list):
         return [op.get_value(contexts) for op in self.list_op]
@@ -198,7 +246,7 @@ class List(Operator):
         return None
 
     def return_type(self) -> type | None:
-        return list[self.item_type]
+        return self.item_types
 
 
 class ForEach(Operator):
@@ -264,7 +312,7 @@ class GetValue(Operator):
 
     def get_value(self, contexts: list):
         context = contexts[self.context_id]
-        return self._get_value_from_json(context, self.path[1:])
+        return self._get_value_from_json(context, self.path)
 
     def _get_value_from_json(self, data: Union[list, dict], path: list):
         if len(path) == 0 or path[0] == "":
@@ -272,13 +320,15 @@ class GetValue(Operator):
 
         if isinstance(data, dict):
             key = path[0]
+            if key in data:
+                return self._get_value_from_json(data[key], path[1:])
         elif isinstance(data, list):
             key = int(path[0])
+            if 0 <= key < len(data):
+                return self._get_value_from_json(data[key], path[1:])
         else:
             raise RuntimeError(f"Expected list or dict, but got {data}")
 
-        if key in data:
-            return self._get_value_from_json(data[key], path[1:])
         return None
 
     def input_type(self) -> type | None:

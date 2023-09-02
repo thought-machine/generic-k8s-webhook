@@ -5,6 +5,7 @@ from generic_k8s_webhook import utils
 from generic_k8s_webhook.config_parser.action_parser import ActionParserV1
 from generic_k8s_webhook.config_parser.jsonpatch_parser import JsonPatchParserV1
 from generic_k8s_webhook.config_parser.webhook_parser import WebhookParserV1
+import generic_k8s_webhook.config_parser.expr_parser as expr_parser
 from generic_k8s_webhook.webhook import Webhook
 
 
@@ -68,7 +69,7 @@ class GenericWebhookConfigManifest:
         webhook_parser = WebhookParserV1(
             action_parser=ActionParserV1(
                 meta_op_parser=op_parser.MetaOperatorParser(
-                    [
+                    list_op_parser_classes=[
                         op_parser.AndParser,
                         op_parser.OrParser,
                         op_parser.EqualParser,
@@ -79,7 +80,8 @@ class GenericWebhookConfigManifest:
                         op_parser.ContainParser,
                         op_parser.ConstParser,
                         op_parser.GetValueParser,
-                    ]
+                    ],
+                    raw_str_parser=expr_parser.RawStringParserV1(),
                 ),
                 json_patch_parser=JsonPatchParserV1(),
             )
