@@ -7,10 +7,11 @@ authors = ["jordi <jordipiqueselles@gmail.com>"]
 license = "Apache License"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 PyYAML = "^6.0"
 jsonpatch = "^1.33"
 requests = "^2.31.0"
+lark = "^1.1.7"
 
 [tool.poetry.scripts]
 generic_k8s_webhook = "generic_k8s_webhook.main:main"

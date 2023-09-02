@@ -18,10 +18,10 @@ jobs:
       - name: Check pyproject.toml
         run: ./scripts/check-pyproject.sh
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install poetry
         run: python3 -m pip install poetry

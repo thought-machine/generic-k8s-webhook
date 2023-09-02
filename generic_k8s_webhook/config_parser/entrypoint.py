@@ -1,5 +1,6 @@
 import copy
 
+import generic_k8s_webhook.config_parser.expr_parser as expr_parser
 import generic_k8s_webhook.config_parser.operator_parser as op_parser
 from generic_k8s_webhook import utils
 from generic_k8s_webhook.config_parser.action_parser import ActionParserV1
@@ -57,18 +58,20 @@ class GenericWebhookConfigManifest:
         # Select the correct parsing method according to the api version, since different api versions
         # expect different schemas
         if self.apiversion == "v1alpha1":
-            self.list_webhook_config = self._parse_alpha1v1(raw_list_webhook_config)
+            self.list_webhook_config = self._parse_v1alpha1(raw_list_webhook_config)
+        elif self.apiversion == "v1beta1":
+            self.list_webhook_config = self._parse_v1beta1(raw_list_webhook_config)
         else:
             raise ValueError(f"The api version {self.apiversion} is not supported")
 
         if len(raw_config) > 0:
             raise ValueError(f"Invalid fields at the manifest level: {raw_config}")
 
-    def _parse_alpha1v1(self, raw_list_webhook_config: dict) -> list[Webhook]:
+    def _parse_v1alpha1(self, raw_list_webhook_config: dict) -> list[Webhook]:
         webhook_parser = WebhookParserV1(
             action_parser=ActionParserV1(
                 meta_op_parser=op_parser.MetaOperatorParser(
-                    [
+                    list_op_parser_classes=[
                         op_parser.AndParser,
                         op_parser.OrParser,
                         op_parser.EqualParser,
@@ -79,7 +82,35 @@ class GenericWebhookConfigManifest:
                         op_parser.ContainParser,
                         op_parser.ConstParser,
                         op_parser.GetValueParser,
-                    ]
+                    ],
+                    raw_str_parser=expr_parser.RawStringParserNotImplemented(),
+                ),
+                json_patch_parser=JsonPatchParserV1(),
+            )
+        )
+        list_webhook_config = [
+            webhook_parser.parse(raw_webhook_config, f"webhooks.{i}")
+            for i, raw_webhook_config in enumerate(raw_list_webhook_config)
+        ]
+        return list_webhook_config
+
+    def _parse_v1beta1(self, raw_list_webhook_config: dict) -> list[Webhook]:
+        webhook_parser = WebhookParserV1(
+            action_parser=ActionParserV1(
+                meta_op_parser=op_parser.MetaOperatorParser(
+                    list_op_parser_classes=[
+                        op_parser.AndParser,
+                        op_parser.OrParser,
+                        op_parser.EqualParser,
+                        op_parser.SumParser,
+                        op_parser.NotParser,
+                        op_parser.ListParser,
+                        op_parser.ForEachParser,
+                        op_parser.ContainParser,
+                        op_parser.ConstParser,
+                        op_parser.GetValueParser,
+                    ],
+                    raw_str_parser=expr_parser.RawStringParserV1(),
                 ),
                 json_patch_parser=JsonPatchParserV1(),
             )

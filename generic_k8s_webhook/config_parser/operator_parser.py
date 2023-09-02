@@ -1,12 +1,13 @@
 import abc
 import inspect
 
+import generic_k8s_webhook.config_parser.expr_parser as expr_parser
 from generic_k8s_webhook import operators, utils
 from generic_k8s_webhook.config_parser.common import ParsingException
 
 
 class MetaOperatorParser:
-    def __init__(self, list_op_parser_classes: list[type]) -> None:
+    def __init__(self, list_op_parser_classes: list[type], raw_str_parser: expr_parser.IRawStringParser) -> None:
         self.dict_op_parser = {}
         for op_parser_class in list_op_parser_classes:
             # Make sure that op_parser_class is a proper "OperatorParser" derived class
@@ -22,7 +23,24 @@ class MetaOperatorParser:
                 raise RuntimeError(f"Duplicated operator parser {op_parser.get_name()}")
             self.dict_op_parser[op_parser.get_name()] = op_parser
 
-    def parse(self, op_spec: dict, path_op: str) -> operators.Operator:
+        self.raw_str_parser = raw_str_parser
+
+    def parse(self, op_spec: dict | str, path_op: str) -> operators.Operator:
+        if isinstance(op_spec, dict):
+            return self._parse_dict(op_spec, path_op)
+        if isinstance(op_spec, str):
+            return self._parse_str(op_spec, path_op)
+        raise RuntimeError(f"Cannot parse the type {type(op_spec)}. It must be dict or str")
+
+    def _parse_dict(self, op_spec: dict, path_op: str) -> operators.Operator:
+        """It's used to parse a structured operator. Example:
+
+        ```yaml
+        sum:
+            - const: 4
+            - const: 5
+        ```
+        """
         if len(op_spec) != 1:
             raise ValueError(f"Expected exactly one key under {path_op}")
         op_name, op_spec = op_spec.popitem()
@@ -32,6 +50,18 @@ class MetaOperatorParser:
         op = op_parser.parse(op_spec, f"{path_op}.{op_name}")
 
         return op
+
+    def _parse_str(self, op_spec: str, path_op: str) -> operators.Operator:
+        """It's used to parse an unstructured operator. Example:
+
+        ```yaml
+        "4 + 5"
+        ```
+        """
+        try:
+            return self.raw_str_parser.parse(op_spec)
+        except Exception as e:
+            raise ParsingException(f"Error when parsing {path_op}") from e
 
 
 class OperatorParser(abc.ABC):
@@ -205,17 +235,7 @@ class GetValueParser(OperatorParser):
     def parse(self, op_inputs: str, path_op: str) -> operators.GetValue:
         if not isinstance(op_inputs, str):
             raise ValueError(f"Expected to find str but got {op_inputs} in {path_op}")
-        path = utils.convert_dot_string_path_to_list(op_inputs)
-
-        # Get the id of the context that it will use
-        if path[0] == "":
-            context_id = -1
-        elif path[0] == "$":
-            context_id = 0
-        else:
-            raise ValueError(f"Invalid {path[0]} in {path_op}")
-
         try:
-            return operators.GetValue(path, context_id)
+            return expr_parser.parse_ref(op_inputs)
         except TypeError as e:
             raise ParsingException(f"Error when parsing {path_op}") from e
