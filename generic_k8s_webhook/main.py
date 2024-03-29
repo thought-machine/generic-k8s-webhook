@@ -41,7 +41,7 @@ def cli(args):
 def start_server(args):
     server = Server(args.port, args.cert_file, args.key_file, args.config)
 
-    def stop_server(*args):
+    def stop_server(*args):  # pylint: disable=unused-argument
         threading.Thread(target=server.stop).start()
 
     signal.signal(signal.SIGINT, stop_server)

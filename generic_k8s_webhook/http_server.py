@@ -43,7 +43,7 @@ class ConfigLoader(threading.Thread):
         while not self.stop_event.wait(self.refresh_period):
             try:
                 self._reload_manifest()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logging.error(e, exc_info=True)
 
     def get_webhooks(self) -> list[Webhook]:
@@ -61,7 +61,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             self._do_get()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logging.error(e, exc_info=True)
 
     def _do_get(self):
@@ -74,7 +74,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             self._do_post()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logging.error(e, exc_info=True)
 
     def _do_post(self):
@@ -124,7 +124,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
 
 
 class Server:
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self, port: int, certfile: str, keyfile: str, generic_webhook_config_file: str, config_refresh_period: float = 5
     ) -> None:
         """Validating/Mutating webhook server. It listens to requests made at port <port>

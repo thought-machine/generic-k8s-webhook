@@ -1,8 +1,8 @@
 import abc
 import inspect
 
-import generic_k8s_webhook.config_parser.expr_parser as expr_parser
 from generic_k8s_webhook import operators, utils
+from generic_k8s_webhook.config_parser import expr_parser
 from generic_k8s_webhook.config_parser.common import ParsingException
 
 

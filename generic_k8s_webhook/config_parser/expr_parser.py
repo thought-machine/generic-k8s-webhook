@@ -110,7 +110,7 @@ class MyTransformerV1(Transformer):
 
     def boolean(self, items):
         (elem,) = items
-        elem_bool = True if elem == "true" else False
+        elem_bool = elem == "true"
         return op.Const(elem_bool)
 
 
