@@ -1,8 +1,8 @@
 import copy
 
-import generic_k8s_webhook.config_parser.expr_parser as expr_parser
 import generic_k8s_webhook.config_parser.operator_parser as op_parser
 from generic_k8s_webhook import utils
+from generic_k8s_webhook.config_parser import expr_parser
 from generic_k8s_webhook.config_parser.action_parser import ActionParserV1
 from generic_k8s_webhook.config_parser.jsonpatch_parser import JsonPatchParserV1
 from generic_k8s_webhook.config_parser.webhook_parser import WebhookParserV1

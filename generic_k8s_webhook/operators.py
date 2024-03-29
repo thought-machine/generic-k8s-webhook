@@ -157,10 +157,9 @@ class Comp(BinaryOp):
         list_arg_values = self.args.get_value(contexts)
         if len(list_arg_values) < 2:
             return True
-        elif len(list_arg_values) == 2:
+        if len(list_arg_values) == 2:
             return self._op(list_arg_values[0], list_arg_values[1])
-        else:
-            raise ValueError("A comparison cannot have more than 2 operands")
+        raise ValueError("A comparison cannot have more than 2 operands")
 
     def input_type(self) -> type | None:
         return list[None]

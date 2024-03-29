@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check pyproject.toml
-        run: ./scripts/check-pyproject.sh
+        run: make check-pyproject
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
@@ -30,7 +30,7 @@ jobs:
         run: poetry install
 
       - name: Linter
-        run: scripts/format-code.sh --check
+        run: make lint
 
       - name: Run unittests
-        run: poetry run pytest tests --timeout 15
+        run: make unittests

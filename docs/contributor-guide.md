@@ -3,7 +3,7 @@
 ## Required tools
 
 - [Git](https://git-scm.com/downloads)
-- [Python 3.10+](https://www.python.org/downloads/)
+- [Python 3.11+](https://www.python.org/downloads/)
 - [Poetry](https://python-poetry.org/docs/)
 - [Docker](https://docs.docker.com/install/)
 
@@ -29,36 +29,40 @@ poetry run python3 generic_k8s_webhook/main.py --config <GenericWebhookConfigFil
 
 ## Format code
 
-The project uses [black](https://black.readthedocs.io/en/stable/) and [isort](https://pycqa.github.io/isor) to format the code. To do so automatically, you can run this script:
+The project uses [black](https://black.readthedocs.io/en/stable/) and [isort](https://pycqa.github.io/isor) to format the code. To do so automatically, you can execute this make rule:
 
 ```bash
-./scripts/format-code.sh
+make format
 ```
 
 ## Test
 
-You can run all the tests executed in the CI by calling:
+You can run (sequentially) all the tests executed in the CI by calling:
 
 ```bash
-./scripts/run-all-tests.sh
+make all-tests-seq
 ```
 
 These tests can be splitted in 3 categories.
 
 ### Linter
 
-The linting phase checks that the code is well [formatted](#format-code). Apart from that, it also runs [pylint](https://www.pylint.org/). In order to pass the linting phase, `pylint` must not detect any error and must give an overall score of >9.5.
+The linting phase checks that the code is well [formatted](#format-code). Apart from that, it also runs [pylint](https://www.pylint.org/). In order to pass the linting phase, `pylint` must not detect any error,
+even if it's a minor one.
 
 ```bash
-./scripts/format-code.sh --check
+make lint
 ```
+
+In some cases, it's acceptable to add `# pylint: disable=<rule>` to disable
+a specific linting issue in a specific line, only if fixing this issue makes the code worse.
 
 ### Unittests and e2e tests
 
 We use [pytest](https://docs.pytest.org/en/7.3.x/) to test the functionality of the app. These tests are defined under the [tests](../tests/) directory and they are a mix of both pure unittests and end-to-end tests.
 
 ```bash
-poetry run pytest tests
+make unittests
 ```
 
 ### Docker build
@@ -66,7 +70,7 @@ poetry run pytest tests
 The last phase of our testing suite is building the docker container that has our app installed in it.
 
 ```bash
-docker build -t generic-k8s-webhook:latest .
+make docker
 ```
 
 ## Structure of the code
