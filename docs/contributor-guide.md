@@ -65,6 +65,12 @@ We use [pytest](https://docs.pytest.org/en/7.3.x/) to test the functionality of 
 make unittests
 ```
 
+The previous command will generate a test coverage report. You can open it on your browser by typing:
+
+```bash
+open htmlcov/index.html
+```
+
 ### Docker build
 
 The last phase of our testing suite is building the docker container that has our app installed in it.
