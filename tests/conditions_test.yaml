@@ -1,0 +1,193 @@
+schemas_subsets:
+  # v1alpha1 is a subset of the features from v1beta1
+  # For this reason, any test that uses v1alpha1 will also be executed for v1beta1
+  v1alpha1:
+    - v1beta1
+
+# Each suite stresses a specific operator or set of operators used to specify conditions
+# Each test specifies the schema used to parse the condition. Notice that the same test
+# will be executed by all the schemas that are a superset of the one specified in the test.
+# A test is composed by different cases. Each case defines the actual condition to be tested,
+# some context (optional) and the expected result.
+test_suites:
+  - name: AND
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          - condition:
+              and:
+                - const: true
+                - const: true
+            expected_result: true
+          - condition:
+              and:
+                - const: true
+                - const: false
+            expected_result: false
+          - condition:
+              and:
+                - const: false
+            expected_result: false
+          - condition:
+              and: []
+            expected_result: true
+  - name: OR
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          - condition:
+              or:
+                - const: false
+                - const: false
+            expected_result: false
+          - condition:
+              or:
+                - const: true
+                - const: false
+            expected_result: true
+          - condition:
+              or:
+                - const: true
+            expected_result: true
+  - name: NOT
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          - condition:
+              not:
+                const: true
+            expected_result: false
+          - condition:
+              not:
+                const: false
+            expected_result: true
+  - name: EQUAL
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          - condition:
+              equal:
+                - const: 1
+            expected_result: true
+          - condition:
+              equal:
+                - const: 1
+                - const: 2
+            expected_result: false
+          - condition:
+              equal:
+                - const: 2
+                - const: 2
+            expected_result: true
+  - name: SUM
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          - condition:
+              sum:
+                - const: 1
+                - const: 2
+                - const: 3
+            expected_result: 6
+          - condition:
+              sum:
+                - const: 2
+            expected_result: 2
+  - name: GET_VALUE
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Retrieve value from last context
+          - condition:
+              getValue: .name
+            context:
+              - metadata:
+                  name: foo
+                  spec: {}
+              - name: bar
+            expected_result: bar
+          # Retrieve value from first context
+          - condition:
+              getValue: $.metadata.name
+            context:
+              - metadata:
+                  name: foo
+                  spec: {}
+              - name: bar
+            expected_result: foo
+  - name: FOR_EACH
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Iterate over a constant list of elements and sum 10 to each
+          - condition:
+              forEach:
+                elements:
+                  const: [1, 2]
+                op:
+                  sum:
+                    - const: 10
+                    - getValue: "."
+            expected_result: [11, 12]
+          # Iterate over a list defined in the yaml file and sum 1 to each
+          - condition:
+              forEach:
+                elements:
+                  getValue: .containers
+                op:
+                  sum:
+                    - const: 1
+                    - getValue: .maxCPU
+            context:
+              - containers:
+                  - maxCPU: 1
+                  - maxCPU: 2
+            expected_result: [2, 3]
+  - name: CONTAIN
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          - condition:
+              contain:
+                elements:
+                  getValue: .containers
+                value:
+                  const: { maxCPU: 2 }
+            context:
+              - containers:
+                  - maxCPU: 1
+                  - maxCPU: 2
+            expected_result: true
+          - condition:
+              contain:
+                elements:
+                  getValue: .containers
+                value:
+                  const: { maxCPU: 4 }
+            context:
+              - containers:
+                  - maxCPU: 1
+                  - maxCPU: 2
+            expected_result: false
+  - name: RAW_STR_EXPR
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition: "2 * (3 + 4 / 2) - 1"
+            expected_result: 9
+          - condition: "2*(3+4/2)-1"
+            expected_result: 9
+          - condition: "8/4/2"
+            expected_result: 1
+          - condition: "1 == 1 && 1 != 0 && 0 <= 0 && 0 < 1 && 1 > 0 && 1 >= 1 && true"
+            expected_result: true
+          - condition: "1 != 1 || 1 == 0 || 0 < 0 || 0 >= 1 || 1 <= 0 || 1 < 1 || false"
+            expected_result: false
+          - condition: '"foo" == "foo" && "foo" != "bar"'
+            expected_result: true
+          - condition: ".containers.0.maxCPU + 1  == .containers.1.maxCPU"
+            context:
+              - containers:
+                  - maxCPU: 1
+                  - maxCPU: 2
+            expected_result: true

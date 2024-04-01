@@ -1,7 +1,7 @@
 SRC_DIR := ./generic_k8s_webhook
 TEST_DIR := ./tests
 SRC_FILES := $(shell find $(SRC_DIR) -type f -name '*.py')
-TEST_FILES := $(shell find $(TEST_DIR) -type f -name '*.py')
+TEST_FILES := $(shell find $(TEST_DIR) -type f -name '*.py' -o -name '*.yaml')
 
 out/install-deps.stamp: pyproject.toml poetry.lock
 	poetry install
@@ -29,7 +29,8 @@ format: build
 
 .PHONY: unittests
 unittests: build
-	poetry run pytest tests --timeout 15
+	poetry run pytest tests
+	poetry run coverage html
 
 .PHONY: check-pyproject
 check-pyproject:
