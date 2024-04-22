@@ -100,12 +100,15 @@ class GenericWebhookConfigManifest:
                 meta_op_parser=op_parser.MetaOperatorParser(
                     list_op_parser_classes=[
                         op_parser.AndParser,
+                        op_parser.AllParser,
                         op_parser.OrParser,
+                        op_parser.AnyParser,
                         op_parser.EqualParser,
                         op_parser.SumParser,
                         op_parser.NotParser,
                         op_parser.ListParser,
                         op_parser.ForEachParser,
+                        op_parser.MapParser,
                         op_parser.ContainParser,
                         op_parser.ConstParser,
                         op_parser.GetValueParser,
