@@ -138,6 +138,36 @@ test_suites:
                   spec: {}
               - name: bar
             expected_result: foo
+          # Evaluate a wildcard (1)
+          - condition:
+              getValue: .nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution.*.preference.matchExpressions
+            context:
+              - nodeAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - preference:
+                        matchExpressions:
+                          - key: key1
+                    - preference:
+                        matchExpressions:
+                          - key: key2
+            expected_result:
+              - key: key1
+              - key: key2
+          # Evaluate a wildcard (2)
+          - condition:
+              getValue: .nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution.*.preference.matchExpressions.*.key
+            context:
+              - nodeAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - preference:
+                        matchExpressions:
+                          - key: key1
+                    - preference:
+                        matchExpressions:
+                          - key: key2
+            expected_result:
+              - key1
+              - key2
   - name: FOR_EACH
     tests:
       - schemas: [v1alpha1]
