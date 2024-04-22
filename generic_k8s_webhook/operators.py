@@ -319,6 +319,9 @@ class GetValue(Operator):
         if len(path) == 0 or path[0] == "":
             return data
 
+        if path[0] == "*":
+            return self._evaluate_wildcard(data, path)
+
         if isinstance(data, dict):
             key = path[0]
             if key in data:
@@ -331,6 +334,18 @@ class GetValue(Operator):
             raise RuntimeError(f"Expected list or dict, but got {data}")
 
         return None
+
+    def _evaluate_wildcard(self, data: Union[list, dict], path: list):
+        if not isinstance(data, list):
+            raise RuntimeError(f"Expected list when evaluating '*', but got {data}")
+        l = []
+        for elem in data:
+            sublist = self._get_value_from_json(elem, path[1:])
+            if isinstance(sublist, list):
+                l.extend(sublist)
+            else:
+                l.append(sublist)
+        return l
 
     def input_type(self) -> type | None:
         return None
