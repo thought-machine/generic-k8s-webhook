@@ -31,6 +31,16 @@ test_suites:
           - condition:
               and: []
             expected_result: true
+  # Just check we can parse "all", since it's the same as "and"
+  - name: ALL
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition:
+              all:
+                - const: true
+                - const: true
+            expected_result: true
   - name: OR
     tests:
       - schemas: [v1alpha1]
@@ -49,6 +59,19 @@ test_suites:
               or:
                 - const: true
             expected_result: true
+          - condition:
+              or: []
+            expected_result: false
+  # Just check we can parse "any", since it's the same as "or"
+  - name: ANY
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition:
+              any:
+                - const: false
+                - const: false
+            expected_result: false
   - name: NOT
     tests:
       - schemas: [v1alpha1]
@@ -143,6 +166,20 @@ test_suites:
                   - maxCPU: 1
                   - maxCPU: 2
             expected_result: [2, 3]
+  # Just check we can parse "map", since it's the same as "forEach"
+  - name: MAP
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition:
+              map:
+                elements:
+                  const: [1, 2]
+                op:
+                  sum:
+                    - const: 10
+                    - getValue: "."
+            expected_result: [11, 12]
   - name: CONTAIN
     tests:
       - schemas: [v1alpha1]

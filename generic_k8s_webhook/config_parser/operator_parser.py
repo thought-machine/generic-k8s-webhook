@@ -100,6 +100,10 @@ class BinaryOpParser(OperatorParser):
 
 
 class AndParser(BinaryOpParser):
+    """
+    Deprecated. Use "all" instead
+    """
+
     @classmethod
     def get_name(cls) -> str:
         return "and"
@@ -109,7 +113,21 @@ class AndParser(BinaryOpParser):
         return operators.And
 
 
+class AllParser(AndParser):
+    """
+    Just an alias for "and". In the future, we'll deprecate "and" in favour of "all"
+    """
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "all"
+
+
 class OrParser(BinaryOpParser):
+    """
+    Deprecated. Use "any" instead
+    """
+
     @classmethod
     def get_name(cls) -> str:
         return "or"
@@ -117,6 +135,16 @@ class OrParser(BinaryOpParser):
     @classmethod
     def get_operator_cls(cls) -> operators.BinaryOp:
         return operators.Or
+
+
+class AnyParser(OrParser):
+    """
+    Just an alias for "or". In the future, we'll deprecate "or" in favour of "all"
+    """
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "any"
 
 
 class EqualParser(BinaryOpParser):
@@ -180,6 +208,10 @@ class ListParser(OperatorParser):
 
 
 class ForEachParser(OperatorParser):
+    """
+    Deprecated. Use "map" instead of "forEach"
+    """
+
     @classmethod
     def get_name(cls) -> str:
         return "forEach"
@@ -195,6 +227,16 @@ class ForEachParser(OperatorParser):
             return operators.ForEach(elements, op)
         except TypeError as e:
             raise ParsingException(f"Error when parsing {path_op}") from e
+
+
+class MapParser(ForEachParser):
+    """
+    It's an alias of ForEachParser. In the future, we'll deprecate "forEach" in favour of "map"
+    """
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "map"
 
 
 class ContainParser(OperatorParser):

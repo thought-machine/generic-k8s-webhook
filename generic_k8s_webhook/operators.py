@@ -110,6 +110,7 @@ class And(BoolOp):
         return lhs and rhs
 
     def _zero_args_result(self):
+        # This follows the default behaviour in Python when executing `all([])`
         return True
 
 
@@ -118,7 +119,8 @@ class Or(BoolOp):
         return lhs or rhs
 
     def _zero_args_result(self):
-        return True
+        # This follows the default behaviour in Python when executing `any([])`
+        return False
 
 
 class ArithOp(BinaryOp):
