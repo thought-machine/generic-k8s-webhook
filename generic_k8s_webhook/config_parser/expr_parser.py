@@ -7,7 +7,16 @@ import generic_k8s_webhook.operators as op
 from generic_k8s_webhook import utils
 
 GRAMMAR_V1 = r"""
-    ?start: expr
+    ?start: expr | list_filter_map
+
+    ?list_filter_map: reference filter_expr -> filterr
+        | reference map_expr -> mapp
+        | list_filter_map filter_expr -> filterr
+        | list_filter_map map_expr -> mapp
+
+    ?filter_expr: "|" expr
+
+    ?map_expr: "->" expr
 
     ?expr: or
 
@@ -33,11 +42,16 @@ GRAMMAR_V1 = r"""
         | product "*" atom  -> mul
         | product "/" atom  -> div
 
-    ?atom: SIGNED_NUMBER    -> number
-        | ESCAPED_STRING    -> const_string
-        | REF               -> ref
-        | BOOL              -> boolean
+    ?atom: signed_number
+        | escaped_string
+        | reference
+        | bool
         | "(" expr ")"
+
+    signed_number: SIGNED_NUMBER    -> number
+    escaped_string: ESCAPED_STRING  -> const_string
+    reference: REF                  -> ref
+    bool: BOOL                      -> boolean
 
     BOOL: "true" | "false"
     REF: "$"? ("."(CNAME|"*"|INT))+
@@ -113,6 +127,14 @@ class MyTransformerV1(Transformer):
         elem_bool = elem == "true"
         return op.Const(elem_bool)
 
+    def filterr(self, items):
+        elems, operator = items
+        return op.Filter(elems, operator)
+
+    def mapp(self, items):
+        elems, operator = items
+        return op.ForEach(elems, operator)
+
 
 def parse_ref(ref: str) -> op.GetValue:
     """Parses a string that is a reference to some element within a json payload
@@ -186,12 +208,13 @@ class RawStringParserV1(IRawStringParser):
 def main():
     parser = Lark(GRAMMAR_V1)
     # print(parser.parse('.key != "some string"').pretty())
-    tree = parser.parse('"true" != "false"')
+    tree = parser.parse('.spec.containers | .name != "main" -> .requests.cpu * 0.75')
     print(tree.pretty())
     trans = MyTransformerV1()
     new_op = trans.transform(tree)
     print(new_op)
-    print(new_op.get_value([]))
+    context = {"spec": {"containers": [{"name": "main"}, {"name": "side", "requests": {"cpu": 2}}]}}
+    print(new_op.get_value([context]))
 
 
 if __name__ == "__main__":

@@ -236,6 +236,22 @@ test_suites:
                   - maxCPU: 1
                   - maxCPU: 2
             expected_result: false
+  - name: FILTER
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition:
+              filter:
+                elements:
+                  getValue: .containers
+                op: .maxCPU < 2
+            context:
+              - containers:
+                  - name: container1
+                    maxCPU: 1
+                  - name: container2
+                    maxCPU: 2
+            expected_result: [{ name: container1, maxCPU: 1 }]
   - name: RAW_STR_EXPR
     tests:
       - schemas: [v1beta1]
@@ -258,3 +274,27 @@ test_suites:
                   - maxCPU: 1
                   - maxCPU: 2
             expected_result: true
+  - name: LIST_FILTER_MAP_EXPR
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition: .containers | .name != "main"
+            context:
+              - containers:
+                  - name: main
+                  - name: istio
+            expected_result: [name: istio]
+          - condition: ".containers -> .maxCPU * 2"
+            context:
+              - containers:
+                  - maxCPU: 1
+                  - maxCPU: 2
+            expected_result: [2, 4]
+          - condition: .containers | .name != "main" -> .maxCPU > 1
+            context:
+              - containers:
+                  - name: main
+                    maxCPU: 1
+                  - name: istio
+                    maxCPU: 2
+            expected_result: [true]
