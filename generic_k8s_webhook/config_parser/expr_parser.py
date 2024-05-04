@@ -37,6 +37,7 @@ GRAMMAR_V1 = r"""
     ?sum: product
         | sum "+" product   -> add
         | sum "-" product   -> sub
+        | sum "++" product  -> strconcat
 
     ?product: atom
         | product "*" atom  -> mul
@@ -96,6 +97,9 @@ class MyTransformerV1(Transformer):
 
     def sub(self, items):
         return op.Sub(op.List(items))
+
+    def strconcat(self, items):
+        return op.StrConcat(op.List(items))
 
     def mul(self, items):
         return op.Mul(op.List(items))
