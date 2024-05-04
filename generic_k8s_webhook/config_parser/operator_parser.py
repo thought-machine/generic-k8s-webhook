@@ -167,6 +167,16 @@ class SumParser(BinaryOpParser):
         return operators.Sum
 
 
+class StrConcatParser(BinaryOpParser):
+    @classmethod
+    def get_name(cls) -> str:
+        return "strconcat"
+
+    @classmethod
+    def get_operator_cls(cls) -> operators.BinaryOp:
+        return operators.StrConcat
+
+
 class UnaryOpParser(OperatorParser):
     def parse(self, op_inputs: dict | list, path_op: str) -> operators.UnaryOp:
         arg = self.meta_op_parser.parse(op_inputs, path_op)

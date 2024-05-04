@@ -154,6 +154,20 @@ class Div(ArithOp):
         return lhs / rhs
 
 
+class StrConcat(BinaryOp):
+    def input_type(self) -> type | None:
+        return list[str]
+
+    def return_type(self) -> type | None:
+        return str
+
+    def _zero_args_result(self) -> str:
+        return ""
+
+    def _op(self, lhs, rhs):
+        return lhs + rhs
+
+
 class Comp(BinaryOp):
     def get_value(self, contexts: list) -> Any:
         list_arg_values = self.args.get_value(contexts)

@@ -116,6 +116,16 @@ test_suites:
               sum:
                 - const: 2
             expected_result: 2
+  - name: STRCONCAT
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition:
+              strconcat:
+                - const: "foo"
+                - const: "_"
+                - const: "bar"
+            expected_result: foo_bar
   - name: GET_VALUE
     tests:
       - schemas: [v1alpha1]
@@ -274,6 +284,12 @@ test_suites:
                   - maxCPU: 1
                   - maxCPU: 2
             expected_result: true
+          - condition: '"prefix" ++ "-" ++ "suffix"'
+            expected_result: prefix-suffix
+          - condition: '"prefix-" ++ .name'
+            context:
+              - name: my-name
+            expected_result: prefix-my-name
   - name: LIST_FILTER_MAP_EXPR
     tests:
       - schemas: [v1beta1]

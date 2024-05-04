@@ -105,6 +105,7 @@ class GenericWebhookConfigManifest:
                         op_parser.AnyParser,
                         op_parser.EqualParser,
                         op_parser.SumParser,
+                        op_parser.StrConcatParser,
                         op_parser.NotParser,
                         op_parser.ListParser,
                         op_parser.ForEachParser,
