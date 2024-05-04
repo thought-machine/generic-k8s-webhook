@@ -110,6 +110,7 @@ class GenericWebhookConfigManifest:
                         op_parser.ForEachParser,
                         op_parser.MapParser,
                         op_parser.ContainParser,
+                        op_parser.FilterParser,
                         op_parser.ConstParser,
                         op_parser.GetValueParser,
                     ],

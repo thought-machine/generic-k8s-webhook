@@ -273,6 +273,30 @@ class ForEach(Operator):
         return list[self.op.return_type()]
 
 
+class Filter(Operator):
+    def __init__(self, elements: Operator, op: Operator) -> None:
+        self.elements = elements
+        self.op = op
+
+    def get_value(self, contexts: list):
+        elements = self.elements.get_value(contexts)
+        if elements is None:
+            return []
+
+        result_list = []
+        for elem in elements:
+            mapped_elem = self.op.get_value(contexts + [elem])
+            if mapped_elem:
+                result_list.append(elem)
+        return result_list
+
+    def input_type(self) -> type | None:
+        return None
+
+    def return_type(self) -> type | None:
+        return list[self.op.return_type()]
+
+
 class Contain(Operator):
     def __init__(self, elements: Operator, elem: Operator) -> None:
         self.elements = elements

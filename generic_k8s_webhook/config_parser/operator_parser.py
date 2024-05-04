@@ -239,6 +239,24 @@ class MapParser(ForEachParser):
         return "map"
 
 
+class FilterParser(OperatorParser):
+    @classmethod
+    def get_name(cls) -> str:
+        return "filter"
+
+    def parse(self, op_inputs: dict | list, path_op: str) -> operators.Filter:
+        raw_elements = utils.must_get(op_inputs, "elements", f"In {path_op}, required 'elements'")
+        elements = self.meta_op_parser.parse(raw_elements, f"{path_op}.elements")
+
+        raw_op = utils.must_get(op_inputs, "op", f"In {path_op}, required 'op'")
+        op = self.meta_op_parser.parse(raw_op, f"{path_op}.op")
+
+        try:
+            return operators.Filter(elements, op)
+        except TypeError as e:
+            raise ParsingException(f"Error when parsing {path_op}") from e
+
+
 class ContainParser(OperatorParser):
     @classmethod
     def get_name(cls) -> str:
