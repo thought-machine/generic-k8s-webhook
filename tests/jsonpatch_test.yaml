@@ -1,0 +1,128 @@
+schemas_subsets:
+  # v1alpha1 is a subset of the features from v1beta1
+  # For this reason, any test that uses v1alpha1 will also be executed for v1beta1
+  v1alpha1:
+    - v1beta1
+
+# Each suite stresses a specific jsonpatch operator.
+# Each test specifies a patch operation to be applied on a json payload
+# and the expected result.
+test_suites:
+  - name: ADD
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Change the value of a simple key
+          - patch:
+              op: add
+              path: .spec
+              value: foo
+            payload: { spec: {}, metadata: {} }
+            expected_result: { spec: foo, metadata: {} }
+          # Add a subkey that doesn't exist
+          - patch:
+              op: add
+              path: .spec.subkey
+              value: foo
+            payload: { spec: {}, metadata: {} }
+            expected_result: { spec: { subkey: foo }, metadata: {} }
+          # Add a 2 subkeys that don't exist
+          - patch:
+              op: add
+              path: .spec.subkey1.subkey2
+              value: foo
+            payload: { spec: {}, metadata: {} }
+            expected_result:
+              { spec: { subkey1: { subkey2: foo } }, metadata: {} }
+          # Add an element to an existing empty list
+          - patch:
+              op: add
+              path: .spec.containers.-
+              value: { name: main }
+            payload: { spec: { containers: [] }, metadata: {} }
+            expected_result:
+              { spec: { containers: [{ name: main }] }, metadata: {} }
+          # Add an element to an existing non-empty list
+          - patch:
+              op: add
+              path: .spec.containers.-
+              value: { name: main }
+            payload: { spec: { containers: [{ name: sidecar }] }, metadata: {} }
+            expected_result:
+              spec: { containers: [{ name: sidecar }, { name: main }] }
+              metadata: {}
+          # Add an element to a non-existing list
+          - patch:
+              op: add
+              path: .spec.containers.-
+              value: { name: main }
+            payload: { spec: {}, metadata: {} }
+            expected_result:
+              { spec: { containers: [{ name: main }] }, metadata: {} }
+          # Add a new entry on the second element of the list
+          - patch:
+              op: add
+              path: .spec.containers.0.metadata
+              value: {}
+            payload: { spec: { containers: [{ name: main }] }, metadata: {} }
+            expected_result:
+              spec: { containers: [{ name: main, metadata: {} }] }
+              metadata: {}
+  - name: REMOVE
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Remove the value of a simple key
+          - patch:
+              op: remove
+              path: .spec
+            payload: { spec: {}, metadata: {} }
+            expected_result: { metadata: {} }
+  - name: REPLACE
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Replace the value of a simple key
+          - patch:
+              op: replace
+              path: .metadata.name
+              value: bar
+            payload: { spec: {}, metadata: { name: foo } }
+            expected_result: { spec: {}, metadata: { name: bar } }
+  - name: COPY
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Copy the value from a simple key to another
+          - patch:
+              op: copy
+              path: .metadata.name
+              from: .spec.containers.0.name
+            payload:
+              { spec: { containers: [{ name: bar }] }, metadata: { name: foo } }
+            expected_result:
+              { spec: { containers: [{ name: bar }] }, metadata: { name: bar } }
+  - name: MOVE
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Move the value from a simple key to another
+          - patch:
+              op: move
+              path: .metadata.name
+              from: .spec.containers.0.name
+            payload:
+              { spec: { containers: [{ name: bar }] }, metadata: { name: foo } }
+            expected_result:
+              { spec: { containers: [{}] }, metadata: { name: bar } }
+  - name: TEST
+    tests:
+      - schemas: [v1alpha1]
+        cases:
+          # Test the value of a simple key
+          - patch:
+              op: test
+              path: .metadata.name
+              value: foo
+            payload: { spec: {}, metadata: { name: foo } }
+            expected_result: { spec: {}, metadata: { name: foo } }
