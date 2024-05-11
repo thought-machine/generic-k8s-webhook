@@ -58,3 +58,12 @@ def wait_for_server_ready(port: int, tls: bool = False) -> None:
     response = requests.get(url, verify=False, timeout=1)
     if response.status_code != 200:
         raise RuntimeError(f"Error when doing the health check to the server. Error {response.status_code}")
+
+
+def expand_schemas(schemas_subsets: dict[str, list[str]], list_schemas: list[str]) -> list[str]:
+    final_schemas = set()
+    for schema in list_schemas:
+        final_schemas.add(schema)
+        for schemas_superset in schemas_subsets.get(schema, []):
+            final_schemas.add(schemas_superset)
+    return sorted(list(final_schemas))
