@@ -45,7 +45,7 @@ class ActionParserV1(IActionParser):
         condition = self.meta_op_parser.parse(raw_condition, f"{path_action}.condition")
 
         raw_patch = raw_config.pop("patch", [])
-        patch = self.json_patch_parser.parse(raw_patch)
+        patch = self.json_patch_parser.parse(raw_patch, f"{path_action}.patch")
 
         # By default, we always accept the payload
         accept = raw_config.pop("accept", True)

@@ -4,7 +4,7 @@ import generic_k8s_webhook.config_parser.operator_parser as op_parser
 from generic_k8s_webhook import utils
 from generic_k8s_webhook.config_parser import expr_parser
 from generic_k8s_webhook.config_parser.action_parser import ActionParserV1
-from generic_k8s_webhook.config_parser.jsonpatch_parser import JsonPatchParserV1
+from generic_k8s_webhook.config_parser.jsonpatch_parser import JsonPatchParserV1, JsonPatchParserV2
 from generic_k8s_webhook.config_parser.webhook_parser import WebhookParserV1
 from generic_k8s_webhook.webhook import Webhook
 
@@ -95,29 +95,30 @@ class GenericWebhookConfigManifest:
         return list_webhook_config
 
     def _parse_v1beta1(self, raw_list_webhook_config: dict) -> list[Webhook]:
+        meta_op_parser = op_parser.MetaOperatorParser(
+            list_op_parser_classes=[
+                op_parser.AndParser,
+                op_parser.AllParser,
+                op_parser.OrParser,
+                op_parser.AnyParser,
+                op_parser.EqualParser,
+                op_parser.SumParser,
+                op_parser.StrConcatParser,
+                op_parser.NotParser,
+                op_parser.ListParser,
+                op_parser.ForEachParser,
+                op_parser.MapParser,
+                op_parser.ContainParser,
+                op_parser.FilterParser,
+                op_parser.ConstParser,
+                op_parser.GetValueParser,
+            ],
+            raw_str_parser=expr_parser.RawStringParserV1(),
+        )
         webhook_parser = WebhookParserV1(
             action_parser=ActionParserV1(
-                meta_op_parser=op_parser.MetaOperatorParser(
-                    list_op_parser_classes=[
-                        op_parser.AndParser,
-                        op_parser.AllParser,
-                        op_parser.OrParser,
-                        op_parser.AnyParser,
-                        op_parser.EqualParser,
-                        op_parser.SumParser,
-                        op_parser.StrConcatParser,
-                        op_parser.NotParser,
-                        op_parser.ListParser,
-                        op_parser.ForEachParser,
-                        op_parser.MapParser,
-                        op_parser.ContainParser,
-                        op_parser.FilterParser,
-                        op_parser.ConstParser,
-                        op_parser.GetValueParser,
-                    ],
-                    raw_str_parser=expr_parser.RawStringParserV1(),
-                ),
-                json_patch_parser=JsonPatchParserV1(),
+                meta_op_parser=meta_op_parser,
+                json_patch_parser=JsonPatchParserV2(meta_op_parser),
             )
         )
         list_webhook_config = [

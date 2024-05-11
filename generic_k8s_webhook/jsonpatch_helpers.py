@@ -3,6 +3,7 @@ from typing import Any
 
 import jsonpatch
 
+from generic_k8s_webhook import operators
 from generic_k8s_webhook.utils import to_number
 
 
@@ -134,3 +135,19 @@ class JsonPatchTest(JsonPatchOperator):
     def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
         formatted_path = "/" + "/".join(self.path)
         return jsonpatch.JsonPatch([{"op": "test", "path": formatted_path, "value": self.value}])
+
+
+class JsonPatchExpr(JsonPatchOperator):
+    """It's similar to the JsonPatchAdd, but it first dynamically evaluates the actual value
+    expressed under the "value" keyword and then performs a normal "add" operation using
+    this new value
+    """
+
+    def __init__(self, path: list[str], value: operators.Operator) -> None:
+        super().__init__(path)
+        self.value = value
+
+    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
+        actual_value = self.value.get_value([json_to_patch])
+        json_patch_add = JsonPatchAdd(self.path, actual_value)
+        return json_patch_add.generate_patch(json_to_patch)
