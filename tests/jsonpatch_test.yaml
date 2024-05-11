@@ -126,3 +126,14 @@ test_suites:
               value: foo
             payload: { spec: {}, metadata: { name: foo } }
             expected_result: { spec: {}, metadata: { name: foo } }
+  - name: EXPR
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          # Add a prefix
+          - patch:
+              op: expr
+              path: .metadata.name
+              value: '"prefix-" ++ .metadata.name'
+            payload: { spec: {}, metadata: { name: foo } }
+            expected_result: { spec: {}, metadata: { name: prefix-foo } }

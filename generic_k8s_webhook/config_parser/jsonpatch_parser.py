@@ -1,12 +1,103 @@
 import abc
 
+import generic_k8s_webhook.config_parser.operator_parser as op_parser
 from generic_k8s_webhook import jsonpatch_helpers, utils
+from generic_k8s_webhook.config_parser.common import ParsingException
+
+
+class ParserOp(abc.ABC):
+    @abc.abstractmethod
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        pass
+
+    def _parse_path(self, raw_elem: dict, key: str) -> list[str]:
+        raw_path = utils.must_pop(raw_elem, key, f"Missing key {key} in {raw_elem}")
+        path = utils.convert_dot_string_path_to_list(raw_path)
+        if path[0] != "":
+            raise ValueError(f"The first element of a path in the patch must be '.', not {path[0]}")
+        return path[1:]
+
+
+class ParseAdd(ParserOp):
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
+        return jsonpatch_helpers.JsonPatchAdd(path, value)
+
+
+class ParseRemove(ParserOp):
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        return jsonpatch_helpers.JsonPatchRemove(path)
+
+
+class ParseReplace(ParserOp):
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
+        return jsonpatch_helpers.JsonPatchReplace(path, value)
+
+
+class ParseCopy(ParserOp):
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        fromm = self._parse_path(raw_elem, "from")
+        return jsonpatch_helpers.JsonPatchCopy(path, fromm)
+
+
+class ParseMove(ParserOp):
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        fromm = self._parse_path(raw_elem, "from")
+        return jsonpatch_helpers.JsonPatchMove(path, fromm)
+
+
+class ParseTest(ParserOp):
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
+        return jsonpatch_helpers.JsonPatchTest(path, value)
+
+
+class ParseExpr(ParserOp):
+    def __init__(self, meta_op_parser: op_parser.MetaOperatorParser) -> None:
+        self.meta_op_parser = meta_op_parser
+
+    def parse(self, raw_elem: dict, path_op: str) -> jsonpatch_helpers.JsonPatchOperator:
+        path = self._parse_path(raw_elem, "path")
+        value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
+        operator = self.meta_op_parser.parse(value, f"{path_op}.value")
+        return jsonpatch_helpers.JsonPatchExpr(path, operator)
 
 
 class IJsonPatchParser(abc.ABC):
+    def parse(self, raw_patch: list, path_op: str) -> list[jsonpatch_helpers.JsonPatchOperator]:
+        patch = []
+        dict_parse_op = self._get_dict_parse_op()
+        for i, raw_elem in enumerate(raw_patch):
+            op = utils.must_pop(raw_elem, "op", f"Missing key 'op' in {raw_elem}")
+
+            # Select the appropiate class needed to parse the operation "op"
+            if op not in dict_parse_op:
+                raise ParsingException(f"Unsupported patch operation {op} on {path_op}")
+            parse_op = dict_parse_op[op]
+            try:
+                parsed_elem = parse_op.parse(raw_elem, f"{path_op}.{i}")
+            except Exception as e:
+                raise ParsingException(f"Error when parsing {path_op}") from e
+
+            # Make sure we have extracted all the keys from "raw_elem"
+            if len(raw_elem) > 0:
+                raise ValueError(f"Unexpected keys {raw_elem}")
+            patch.append(parsed_elem)
+
+        return patch
+
     @abc.abstractmethod
-    def parse(self, raw_patch: list) -> list[jsonpatch_helpers.JsonPatchOperator]:
-        pass
+    def _get_dict_parse_op(self) -> dict[str, ParserOp]:
+        """A dictionary with the classes that can parse the json patch operations
+        supported by this JsonPatchParser
+        """
 
 
 class JsonPatchParserV1(IJsonPatchParser):
@@ -19,45 +110,28 @@ class JsonPatchParserV1(IJsonPatchParser):
     ```
     """
 
-    def parse(self, raw_patch: list) -> list[jsonpatch_helpers.JsonPatchOperator]:
-        patch = []
-        for raw_elem in raw_patch:
-            op = utils.must_pop(raw_elem, "op", f"Missing key 'op' in {raw_elem}")
-            if op == "add":
-                path = self._parse_path(raw_elem, "path")
-                value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
-                parsed_elem = jsonpatch_helpers.JsonPatchAdd(path, value)
-            elif op == "remove":
-                path = self._parse_path(raw_elem, "path")
-                parsed_elem = jsonpatch_helpers.JsonPatchRemove(path)
-            elif op == "replace":
-                path = self._parse_path(raw_elem, "path")
-                value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
-                parsed_elem = jsonpatch_helpers.JsonPatchReplace(path, value)
-            elif op == "copy":
-                path = self._parse_path(raw_elem, "path")
-                fromm = self._parse_path(raw_elem, "from")
-                parsed_elem = jsonpatch_helpers.JsonPatchCopy(path, fromm)
-            elif op == "move":
-                path = self._parse_path(raw_elem, "path")
-                fromm = self._parse_path(raw_elem, "from")
-                parsed_elem = jsonpatch_helpers.JsonPatchMove(path, fromm)
-            elif op == "test":
-                path = self._parse_path(raw_elem, "path")
-                value = utils.must_pop(raw_elem, "value", f"Missing key 'value' in {raw_elem}")
-                parsed_elem = jsonpatch_helpers.JsonPatchTest(path, value)
-            else:
-                raise ValueError(f"Invalid patch operation {raw_elem['op']}")
+    def _get_dict_parse_op(self) -> dict[str, ParserOp]:
+        return {
+            "add": ParseAdd(),
+            "remove": ParseRemove(),
+            "replace": ParseReplace(),
+            "copy": ParseCopy(),
+            "move": ParseMove(),
+            "test": ParseTest(),
+        }
 
-            if len(raw_elem) > 0:
-                raise ValueError(f"Unexpected keys {raw_elem}")
-            patch.append(parsed_elem)
 
-        return patch
+class JsonPatchParserV2(JsonPatchParserV1):
+    """Class used to parse a json patch spec V2. It supports the same actions as the
+    json patch patch spec V1 plus the ability use expressions to create new values
+    """
 
-    def _parse_path(self, raw_elem: dict, key: str) -> list[str]:
-        raw_path = utils.must_pop(raw_elem, key, f"Missing key {key} in {raw_elem}")
-        path = utils.convert_dot_string_path_to_list(raw_path)
-        if path[0] != "":
-            raise ValueError(f"The first element of a path in the patch must be '.', not {path[0]}")
-        return path[1:]
+    def __init__(self, meta_op_parser: op_parser.MetaOperatorParser) -> None:
+        self.meta_op_parser = meta_op_parser
+
+    def _get_dict_parse_op(self) -> dict[str, ParserOp]:
+        dict_parse_op_v1 = super()._get_dict_parse_op()
+        dict_parse_op_v2 = {
+            "expr": ParseExpr(self.meta_op_parser),
+        }
+        return {**dict_parse_op_v1, **dict_parse_op_v2}
