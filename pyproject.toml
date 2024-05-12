@@ -42,7 +42,7 @@ fixme, \
 """
 
 [tool.pytest.ini_options]
-addopts = "-v --timeout=15 --cov=generic_k8s_webhook"
+addopts = "-v --timeout=15"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

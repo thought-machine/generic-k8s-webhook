@@ -167,7 +167,6 @@ class IRawStringParser(abc.ABC):
 
     def parse(self, raw_string: str) -> op.Operator:
         tree = self.parser.parse(raw_string)
-        print(tree.pretty())  # debug mode
         operator = self.transformer.transform(tree)
         return operator
 

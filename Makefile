@@ -29,7 +29,7 @@ format: build
 
 .PHONY: unittests
 unittests: build
-	poetry run pytest tests
+	poetry run pytest tests --cov=generic_k8s_webhook
 	poetry run coverage html
 
 .PHONY: check-pyproject
