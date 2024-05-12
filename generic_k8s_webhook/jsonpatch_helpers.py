@@ -1,5 +1,5 @@
 import abc
-from typing import Any
+from typing import Any, Union
 
 import jsonpatch
 
@@ -12,8 +12,22 @@ class JsonPatchOperator(abc.ABC):
         self.path = path
 
     @abc.abstractmethod
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
         pass
+
+    def _format_path(self, path: list[str], prefix: list[str]) -> str:
+        """Converts the `path` to a string separated by "/" and starts also by "/"
+        If a prefix is defined and the path is not absolute, then the prefix is preprended.
+        An absolute path is one whose first element is "$"
+        """
+        if path[0] == "$":
+            final_path = path[1:]
+        elif prefix:
+            final_path = prefix + path
+        else:
+            final_path = path
+        final_path = [str(elem) for elem in final_path]
+        return "/" + "/".join(final_path)
 
 
 class JsonPatchAdd(JsonPatchOperator):
@@ -22,7 +36,8 @@ class JsonPatchAdd(JsonPatchOperator):
         self.value = value
 
     # Remember the op "add" is like an assignment
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        json_to_patch = contexts[-1]
         # Check how many (nested) keys already exist
         existing_path = []
         first_non_existing_key = None
@@ -67,14 +82,11 @@ class JsonPatchAdd(JsonPatchOperator):
                 else:
                     new_value = {key: new_value}
 
-        # Convert the list to a string separated by "/"
-        formatted_path = "/" + "/".join(new_path)
-
         return jsonpatch.JsonPatch(
             [
                 {
                     "op": "add",
-                    "path": formatted_path,
+                    "path": self._format_path(new_path, prefix),
                     "value": new_value,
                 }
             ]
@@ -82,14 +94,13 @@ class JsonPatchAdd(JsonPatchOperator):
 
 
 class JsonPatchRemove(JsonPatchOperator):
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
         # TODO If the key to remove doesn't exist, this must become a no-op
-        formatted_path = "/" + "/".join(self.path)
         return jsonpatch.JsonPatch(
             [
                 {
                     "op": "remove",
-                    "path": formatted_path,
+                    "path": self._format_path(self.path, prefix),
                 }
             ]
         )
@@ -100,9 +111,10 @@ class JsonPatchReplace(JsonPatchOperator):
         super().__init__(path)
         self.value = value
 
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
-        formatted_path = "/" + "/".join(self.path)
-        return jsonpatch.JsonPatch([{"op": "replace", "path": formatted_path, "value": self.value}])
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        return jsonpatch.JsonPatch(
+            [{"op": "replace", "path": self._format_path(self.path, prefix), "value": self.value}]
+        )
 
 
 class JsonPatchCopy(JsonPatchOperator):
@@ -110,10 +122,16 @@ class JsonPatchCopy(JsonPatchOperator):
         super().__init__(path)
         self.fromm = fromm
 
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
-        formatted_path = "/" + "/".join(self.path)
-        formatted_from = "/" + "/".join(self.fromm)
-        return jsonpatch.JsonPatch([{"op": "copy", "path": formatted_path, "from": formatted_from}])
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        return jsonpatch.JsonPatch(
+            [
+                {
+                    "op": "copy",
+                    "path": self._format_path(self.path, prefix),
+                    "from": self._format_path(self.fromm, prefix),
+                }
+            ]
+        )
 
 
 class JsonPatchMove(JsonPatchOperator):
@@ -121,10 +139,16 @@ class JsonPatchMove(JsonPatchOperator):
         super().__init__(path)
         self.fromm = fromm
 
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
-        formatted_path = "/" + "/".join(self.path)
-        formatted_from = "/" + "/".join(self.fromm)
-        return jsonpatch.JsonPatch([{"op": "move", "path": formatted_path, "from": formatted_from}])
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        return jsonpatch.JsonPatch(
+            [
+                {
+                    "op": "move",
+                    "path": self._format_path(self.path, prefix),
+                    "from": self._format_path(self.fromm, prefix),
+                }
+            ]
+        )
 
 
 class JsonPatchTest(JsonPatchOperator):
@@ -132,9 +156,8 @@ class JsonPatchTest(JsonPatchOperator):
         super().__init__(path)
         self.value = value
 
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
-        formatted_path = "/" + "/".join(self.path)
-        return jsonpatch.JsonPatch([{"op": "test", "path": formatted_path, "value": self.value}])
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        return jsonpatch.JsonPatch([{"op": "test", "path": self._format_path(self.path, prefix), "value": self.value}])
 
 
 class JsonPatchExpr(JsonPatchOperator):
@@ -147,7 +170,24 @@ class JsonPatchExpr(JsonPatchOperator):
         super().__init__(path)
         self.value = value
 
-    def generate_patch(self, json_to_patch: dict | list) -> jsonpatch.JsonPatch:
-        actual_value = self.value.get_value([json_to_patch])
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        actual_value = self.value.get_value(contexts)
         json_patch_add = JsonPatchAdd(self.path, actual_value)
-        return json_patch_add.generate_patch(json_to_patch)
+        return json_patch_add.generate_patch(contexts, prefix)
+
+
+class JsonPatchForEach(JsonPatchOperator):
+    """Generates a jsonpatch for each element from a list"""
+
+    def __init__(self, op_with_ref: operators.OperatorWithRef, list_jsonpatch_op: list[JsonPatchOperator]) -> None:
+        super().__init__([])
+        self.op_with_ref = op_with_ref
+        self.list_jsonpatch_op = list_jsonpatch_op
+
+    def generate_patch(self, contexts: list[Union[list, dict]], prefix: list[str] = None) -> jsonpatch.JsonPatch:
+        list_raw_patch = []
+        for payload, path in self.op_with_ref.get_value_with_ref(contexts):
+            for jsonpatch_op in self.list_jsonpatch_op:
+                patch_obj = jsonpatch_op.generate_patch(contexts + [payload], path)
+                list_raw_patch.extend(patch_obj.patch)
+        return jsonpatch.JsonPatch(list_raw_patch)

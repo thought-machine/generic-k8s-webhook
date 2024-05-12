@@ -137,3 +137,59 @@ test_suites:
               value: '"prefix-" ++ .metadata.name'
             payload: { spec: {}, metadata: { name: foo } }
             expected_result: { spec: {}, metadata: { name: prefix-foo } }
+  - name: FOR_EACH
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          # Add a prefix to all the container names
+          - patch:
+              op: forEach
+              elements: .spec.containers
+              patch:
+                - op: expr
+                  path: .name
+                  value: '"prefix-" ++ .name'
+            payload: { spec: { containers: [{ name: foo }, { name: bar }] } }
+            expected_result:
+              spec: { containers: [{ name: prefix-foo }, { name: prefix-bar }] }
+          # Add a prefix (the namespace) to all the container names
+          - patch:
+              op: forEach
+              elements: .spec.containers
+              patch:
+                - op: expr
+                  path: .name
+                  value: $.metadata.namespace ++ "-" ++ .name
+            payload:
+              spec: { containers: [{ name: foo }, { name: bar }] }
+              metadata: { namespace: default }
+            expected_result:
+              spec:
+                containers: [{ name: default-foo }, { name: default-bar }]
+              metadata: { namespace: default }
+          # Multiple patches concatened within a forEach
+          - patch:
+              op: forEach
+              elements: .spec.containers
+              patch:
+                - op: expr
+                  path: .requests.cpu
+                  value: .requests.cpu / 2
+                - op: remove
+                  path: .limits
+            payload:
+              spec:
+                containers:
+                  - name: foo
+                    requests: { cpu: 2 }
+                    limits: { cpu: 3, memory: 4 }
+                  - name: bar
+                    requests: { cpu: 4 }
+                    limits: { cpu: 3, memory: 4 }
+            expected_result:
+              spec:
+                containers:
+                  - name: foo
+                    requests: { cpu: 1 }
+                  - name: bar
+                    requests: { cpu: 2 }

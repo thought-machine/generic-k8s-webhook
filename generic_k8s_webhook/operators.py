@@ -15,15 +15,33 @@ class Operator(abc.ABC):
 
     @abc.abstractmethod
     def input_type(self) -> type | None:
-        pass
+        """Returns the expected type for the input parameters. This must match with
+        the return type of the operators that generate input data for this one
+        """
 
     @abc.abstractmethod
     def return_type(self) -> type | None:
-        pass
+        """Returns the expected type for the return value of the `get_value` function"""
 
     @abc.abstractmethod
-    def get_value(self, contexts: list):
-        pass
+    def get_value(self, contexts: list) -> Any:
+        """Returns a value for this operator given a certain context
+
+        Args:
+            contexts (list): It's the list of contexts (json payloads) used to evaluate this operator
+        """
+
+
+class OperatorWithRef(Operator):
+    @abc.abstractmethod
+    def get_value_with_ref(self, contexts: list) -> Any:
+        """Similar to `get_value`, but returns a tuple (or list of tuples) where the first element
+        is the actual return value and the second one is a reference to the place in the context
+        that was used to get this value
+
+        Args:
+            contexts (list): It's the list of contexts (json payloads) used to evaluate this operator
+        """
 
 
 # It's the base class for operators like and, or, sum, etc.
@@ -344,41 +362,56 @@ class Const(Operator):
         return type(self.value)
 
 
-class GetValue(Operator):
+class GetValue(OperatorWithRef):
     def __init__(self, path: list[str], context_id: int) -> None:
         self.path = path
         self.context_id = context_id
 
     def get_value(self, contexts: list):
-        context = contexts[self.context_id]
-        return self._get_value_from_json(context, self.path)
+        values_with_ref = self.get_value_with_ref(contexts)
+        if isinstance(values_with_ref, list):
+            return [value for value, _ in values_with_ref]
+        value, _ = values_with_ref
+        return value
 
-    def _get_value_from_json(self, data: Union[list, dict], path: list):
+    def get_value_with_ref(self, contexts: list):
+        context = contexts[self.context_id]
+        return self._get_value_from_json(context, self.path, [])
+
+    def _get_value_from_json(
+        self, data: Union[list, dict], path: list, formated_path: list
+    ) -> Union[tuple, list[tuple]]:
         if len(path) == 0 or path[0] == "":
-            return data
+            # It can return both a single data point or a list of elements
+            # In the first case, we just return a tuple (data, path)
+            # In the second case, we create a tuple for each element in the list
+            # so we know the path of each element
+            if isinstance(data, list):
+                return [(elem, formated_path + [i]) for i, elem in enumerate(data)]
+            return (data, formated_path)
 
         if path[0] == "*":
-            return self._evaluate_wildcard(data, path)
+            return self._evaluate_wildcard(data, path, formated_path)
 
         if isinstance(data, dict):
             key = path[0]
             if key in data:
-                return self._get_value_from_json(data[key], path[1:])
+                return self._get_value_from_json(data[key], path[1:], formated_path + [key])
         elif isinstance(data, list):
             key = int(path[0])
             if 0 <= key < len(data):
-                return self._get_value_from_json(data[key], path[1:])
+                return self._get_value_from_json(data[key], path[1:], formated_path + [key])
         else:
             raise RuntimeError(f"Expected list or dict, but got {data}")
 
-        return None
+        return []
 
-    def _evaluate_wildcard(self, data: Union[list, dict], path: list):
+    def _evaluate_wildcard(self, data: Union[list, dict], path: list, formated_path: list) -> list[tuple]:
         if not isinstance(data, list):
             raise RuntimeError(f"Expected list when evaluating '*', but got {data}")
         l = []
-        for elem in data:
-            sublist = self._get_value_from_json(elem, path[1:])
+        for i, elem in enumerate(data):
+            sublist = self._get_value_from_json(elem, path[1:], formated_path + [i])
             if isinstance(sublist, list):
                 l.extend(sublist)
             else:

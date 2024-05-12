@@ -13,17 +13,17 @@ class Action:
     def check_condition(self, manifest: dict) -> bool:
         return self.condition.get_value([manifest])
 
-    def get_patches(self, manifest: dict) -> jsonpatch.JsonPatch | None:
+    def get_patches(self, json_payload: dict) -> jsonpatch.JsonPatch | None:
         if not self.list_jpatch_op:
             return None
 
-        # 1. Generate a json patch specific for the manifest
-        # 2. Update the manifest based on that patch
+        # 1. Generate a json patch specific for the json_payload
+        # 2. Update the json_payload based on that patch
         # 3. Extract the raw patch, so we can merge later all the patches into a single JsonPatch object
         list_raw_patches = []
         for jpatch_op in self.list_jpatch_op:
-            jpatch = jpatch_op.generate_patch(manifest)
-            manifest = jpatch.apply(manifest)
+            jpatch = jpatch_op.generate_patch([json_payload])
+            json_payload = jpatch.apply(json_payload)
             list_raw_patches.extend(jpatch.patch)
 
         return jsonpatch.JsonPatch(list_raw_patches)
