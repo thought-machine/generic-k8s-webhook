@@ -24,12 +24,14 @@ def cli(args):
             accept, patch = webhook.process_manifest(k8s_manifest)
             if not accept:
                 sys.exit(1)
-            # Show the patch if it's not None
             if patch:
+                # Show the patch if it's not None
                 if args.show_patch:
                     print(json.dumps(patch.patch, indent=2))
                 else:
                     print(yaml.dump(patch.apply(k8s_manifest), indent=2))
+            else:
+                logging.info("No changes")
             sys.exit(0)
     logging.error(
         f"Couldn't find a webhook called {args.wh_name}. "
@@ -95,11 +97,12 @@ def parse_args() -> argparse.ArgumentParser:
 
 def main():
     args = parse_args()
-    logging.basicConfig(format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s")
     if args.verbose > 0:
         logging.basicConfig(
             format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s", level=logging.INFO
         )
+    else:
+        logging.basicConfig(format="%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s")
     args.func(args)
 
 

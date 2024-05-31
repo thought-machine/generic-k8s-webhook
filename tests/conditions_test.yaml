@@ -314,3 +314,31 @@ test_suites:
                   - name: istio
                     maxCPU: 2
             expected_result: [true]
+  - name: BINARY_OP_ON_STR_LIST_MAP
+    tests:
+      - schemas: [v1beta1]
+        cases:
+          - condition:
+              all: .nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution.*.preference.matchExpressions.* -> .key != "myKey"
+            context:
+              - nodeAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - preference:
+                        matchExpressions:
+                          - key: key1
+                    - preference:
+                        matchExpressions:
+                          - key: key2
+            expected_result: true
+          - condition:
+              all: .nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution.*.preference.matchExpressions.* -> .key != "myKey"
+            context:
+              - nodeAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - preference:
+                        matchExpressions:
+                          - key: key1
+                    - preference:
+                        matchExpressions:
+                          - key: myKey
+            expected_result: false

@@ -8,7 +8,7 @@ from generic_k8s_webhook.config_parser.common import ParsingException
 
 class MetaOperatorParser:
     def __init__(self, list_op_parser_classes: list[type], raw_str_parser: expr_parser.IRawStringParser) -> None:
-        self.dict_op_parser = {}
+        self.dict_op_parser: dict[str, OperatorParser] = {}
         for op_parser_class in list_op_parser_classes:
             # Make sure that op_parser_class is a proper "OperatorParser" derived class
             if (
@@ -25,15 +25,17 @@ class MetaOperatorParser:
 
         self.raw_str_parser = raw_str_parser
 
-    def parse(self, op_spec: dict | str, path_op: str) -> operators.Operator:
+    def parse(self, op_spec: dict | str | list, path_op: str) -> operators.Operator:
         if isinstance(op_spec, dict):
             return self._parse_dict(op_spec, path_op)
         if isinstance(op_spec, str):
             return self._parse_str(op_spec, path_op)
+        if isinstance(op_spec, list):
+            return self._parse_list(op_spec, path_op)
         raise RuntimeError(f"Cannot parse the type {type(op_spec)}. It must be dict or str")
 
     def _parse_dict(self, op_spec: dict, path_op: str) -> operators.Operator:
-        """It's used to parse a structured operator. Example:
+        """It's used to parse a structured operator with a well defined key. Example:
 
         ```yaml
         sum:
@@ -63,6 +65,12 @@ class MetaOperatorParser:
         except Exception as e:
             raise ParsingException(f"Error when parsing {path_op}") from e
 
+    def _parse_list(self, op_spec: list, path_op: str) -> operators.Operator:
+        if "list" not in self.dict_op_parser:
+            raise RuntimeError(f"Couldn't find the 'list' parser to parse the list in {path_op}")
+        list_parser = self.dict_op_parser["list"]
+        return list_parser.parse(op_spec, path_op)
+
 
 class OperatorParser(abc.ABC):
     def __init__(self, meta_op_parser: MetaOperatorParser) -> None:
@@ -80,14 +88,7 @@ class OperatorParser(abc.ABC):
 
 class BinaryOpParser(OperatorParser):
     def parse(self, op_inputs: dict | list, path_op: str) -> operators.BinaryOp:
-        if isinstance(op_inputs, list):
-            list_parser = ListParser(self.meta_op_parser)
-            args = list_parser.parse(op_inputs, path_op)
-        elif isinstance(op_inputs, dict):
-            args = self.meta_op_parser.parse(op_inputs, path_op)
-        else:
-            raise ValueError(f"Expected dict or list as input, but got {op_inputs}")
-
+        args = self.meta_op_parser.parse(op_inputs, path_op)
         try:
             return self.get_operator_cls()(args)
         except TypeError as e:
