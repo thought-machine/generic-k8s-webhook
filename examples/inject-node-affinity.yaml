@@ -1,50 +1,20 @@
-apiVersion: generic-webhook/v1alpha1
+apiVersion: generic-webhook/v1beta1
 kind: GenericWebhookConfig
 webhooks:
   - name: patch-node-affinity
     path: /patch-node-affinity
     actions:
       # If the pod doesn't have any node affinity that involves the `myorg.io/instance-cost`
-      # label, then we inject to it a preferred node affinity for the nodes that have
+      # label, then we inject a preferred node affinity for the nodes that have
       # the value `cheap` for the `myorg.io/instance-cost` label
       - condition:
           and:
             # We are analysing a Pod
-            - equal:
-                - getValue: .kind
-                - const: Pod
-
+            - .kind == "Pod"
             # {key: myorg.io/instance-cost} doesn't appear in preferredDuringSchedulingIgnoredDuringExecution
-            - and:
-                forEach:
-                  elements:
-                    getValue: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution
-                  op:
-                    and:
-                      forEach:
-                        elements:
-                          getValue: .preference.matchExpressions
-                        op:
-                          not:
-                            equal:
-                              - getValue: .key
-                              - const: myorg.io/instance-cost
-
+            - all: .spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution.*.preference.matchExpressions.* -> .key != "myorg.io/instance-cost"
             # {key: myorg.io/instance-cost} doesn't appear in requiredDuringSchedulingIgnoredDuringExecution
-            - and:
-                forEach:
-                  elements:
-                    getValue: .spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
-                  op:
-                    and:
-                      forEach:
-                        elements:
-                          getValue: .matchExpressions
-                        op:
-                          not:
-                            equal:
-                              - getValue: .key
-                              - const: myorg.io/instance-cost
+            - all: .spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms.*.matchExpressions.* -> .key != "myorg.io/instance-cost"
 
         patch:
           # Inject a preferred node affinity for the nodes that have the label
