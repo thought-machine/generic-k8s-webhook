@@ -29,6 +29,9 @@ jobs:
       - name: Install Python libraries
         run: poetry install
 
+      - name: Build self-contained package
+        run: make pkg
+
       - name: Linter
         run: make lint
 

@@ -41,6 +41,10 @@ check-pyproject:
 docker:
 	docker build -t generic-k8s-webhook:latest .
 
+.PHONY: pkg
+pkg: build
+	poetry run pyinstaller ./generic_k8s_webhook/main.py --onefile --recursive-copy-metadata generic_k8s_webhook
+
 all-tests: check-pyproject lint unittests docker
 
 all-tests-seq: | check-pyproject lint unittests docker
