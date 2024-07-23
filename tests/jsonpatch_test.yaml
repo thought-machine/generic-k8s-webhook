@@ -59,6 +59,14 @@ test_suites:
             payload: { spec: {}, metadata: {} }
             expected_result:
               { spec: { containers: [{ name: main }] }, metadata: {} }
+          # Add an element to a non-existing list
+          - patch:
+              op: add
+              path: .spec.containers.0
+              value: { name: main }
+            payload: { spec: {}, metadata: {} }
+            expected_result:
+              { spec: { containers: [{ name: main }] }, metadata: {} }
           # Add a new entry on the second element of the list
           - patch:
               op: add
