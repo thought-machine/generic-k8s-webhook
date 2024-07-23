@@ -77,7 +77,7 @@ class JsonPatchAdd(JsonPatchOperator):
             # The rest of non-existing keys must be part of the "values"
             items_to_create = self.path[len(new_path) :]
             for key in reversed(items_to_create):
-                if key == "-":
+                if key in ["-", "0"]:
                     new_value = [new_value]
                 else:
                     new_value = {key: new_value}
