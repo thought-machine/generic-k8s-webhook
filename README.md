@@ -138,6 +138,15 @@ patch:
     value: <any value>
 ```
 
+## Next steps
+
+- Script to measure performance (API calls per second) for a single replica
+- Create a CRD for the `GenericWebhookConfig` and consume it as a K8S object instead of as a ConfigMap
+- Add more examples
+- Helm chart
+- Analyse how much CPU and memory the app needs
+- Prometheus metrics to show number of requests processed, succeeded, queued requests, time it takes to process a request, etc.
+
 ## Contributing
 
 See the [contributor guide](./docs/contributor-guide.md)
