@@ -18,7 +18,8 @@ HTTP_SERVER_TEST_DATA_DIR = os.path.join(SCRIPT_DIR, "http_server_test_data")
 @pytest.mark.parametrize(
     ("name_test", "req", "webhook_config", "expected_response"),
     load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_1.yaml"))
-    + load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_3.yaml")),
+    + load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_3.yaml"))
+    + load_test_case(os.path.join(HTTP_SERVER_TEST_DATA_DIR, "test_case_4.yaml")),
 )
 def test_http_server(name_test, req, webhook_config, expected_response, tmp_path):
     webhook_config_file = tmp_path / "webhook_config.yaml"

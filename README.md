@@ -91,6 +91,8 @@ actions:
 
 ```
 
+If more than one webhook have the same path, they will be called in order. The `accept` responses are ANDed and the `patch` responses are concatenated. Notice that a given webhook will receive the payload already modified by all the previous webhooks that have the same path.
+
 The syntax of the `condition` can be found in [Defining a condition](#defining-a-condition). The syntax of the patch can be found in [Defining a patch](#defining-a-patch).
 
 ### Testing the `GenericWebhookConfig` file is correct
