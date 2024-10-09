@@ -15,6 +15,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check pyproject.toml
+        run: make check-pyproject
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install poetry
+        run: python3 -m pip install poetry
+
       - name: Write version
         run: ./scripts/insert-version-pyproject.sh ${{github.ref_name}}
 
@@ -23,11 +34,10 @@ jobs:
           make pkg
           mv ./dist/main ./generic-k8s-webhook-linux-${{github.ref_name}}
 
-      # FIXME Uncomment this once we enable softprops/action-gh-release@v2
-      # - name: Publish package
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: generic-k8s-webhook-linux-${{github.ref_name}}
+      - name: Publish package
+        uses: softprops/action-gh-release@v2
+        with:
+          files: generic-k8s-webhook-linux-${{github.ref_name}}
 
   build-and-publish-to-ghcr:
     # Explicitly grant the `secrets.GITHUB_TOKEN` permissions.
