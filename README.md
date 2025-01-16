@@ -91,6 +91,8 @@ actions:
 
 ```
 
+If more than one webhook have the same path, they will be called in order. The `accept` responses are ANDed and the `patch` responses are concatenated. Notice that a given webhook will receive the payload already modified by all the previous webhooks that have the same path.
+
 The syntax of the `condition` can be found in [Defining a condition](#defining-a-condition). The syntax of the patch can be found in [Defining a patch](#defining-a-patch).
 
 ### Testing the `GenericWebhookConfig` file is correct
@@ -135,6 +137,15 @@ patch:
     path: .metadata.labels
     value: <any value>
 ```
+
+## Next steps
+
+- Script to measure performance (API calls per second) for a single replica
+- Create a CRD for the `GenericWebhookConfig` and consume it as a K8S object instead of as a ConfigMap
+- Add more examples
+- Helm chart
+- Analyse how much CPU and memory the app needs
+- Prometheus metrics to show number of requests processed, succeeded, queued requests, time it takes to process a request, etc.
 
 ## Contributing
 

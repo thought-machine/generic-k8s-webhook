@@ -14,9 +14,6 @@ class Action:
         return self.condition.get_value([manifest])
 
     def get_patches(self, json_payload: dict) -> jsonpatch.JsonPatch | None:
-        if not self.list_jpatch_op:
-            return None
-
         # 1. Generate a json patch specific for the json_payload
         # 2. Update the json_payload based on that patch
         # 3. Extract the raw patch, so we can merge later all the patches into a single JsonPatch object
@@ -42,4 +39,4 @@ class Webhook:
                 return action.accept, patches
 
         # If no condition is met, we'll accept the manifest without any patch
-        return True, None
+        return True, jsonpatch.JsonPatch([])

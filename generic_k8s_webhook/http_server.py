@@ -79,28 +79,33 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
 
     def _do_post(self):
         logging.info(f"Processing request from {self.address_string()}")
-        request_served = False
-        for webhook in self.CONFIG_LOADER.get_webhooks():
-            if self._get_path() == webhook.path:
-                content_length = int(self.headers["Content-Length"])
-                raw_body = self.rfile.read(content_length)
-                body = json.loads(raw_body)
-                request = body["request"]
+        webhook_paths = [webhook.path for webhook in self.CONFIG_LOADER.get_webhooks()]
 
-                uid = request["uid"]
-                accept, patch = webhook.process_manifest(request["object"])
-                response = self._generate_response(uid, accept, patch)
-
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-
-                request_served = True
-
-        if not request_served:
+        # The path in the url is not defined in this server
+        if self._get_path() not in webhook_paths:
             self.send_response(400)
             self.end_headers()
-            logging.error(f"Wrong path {self.path}")
+            logging.error(f"Wrong path {self.path} Not defined")
+            return
+
+        request = self._get_body_request()
+        uid = request["uid"]
+        # Calling in order all the webhooks that have the target path. They all must set accept=True to
+        # accept the request. The patches are concatenated and applied for the next call to "process_manifest"
+        final_patch = jsonpatch.JsonPatch([])
+        for webhook in self.CONFIG_LOADER.get_webhooks():
+            if self._get_path() == webhook.path:
+                # The call to the current webhook needs a json object that has been updated by the previous patches
+                patched_object = final_patch.apply(request["object"])
+                accept, patch = webhook.process_manifest(patched_object)
+                final_patch = jsonpatch.JsonPatch(list(final_patch) + list(patch))
+                if not accept:
+                    break
+
+        response = self._generate_response(uid, accept, final_patch)
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode("utf-8"))
 
     def _generate_response(self, uid: str, accept: bool, patch: jsonpatch.JsonPatch) -> dict:
         response = {
@@ -121,6 +126,14 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
     def _get_path(self) -> str:
         parsed_url = urlparse(self.path)
         return parsed_url.path
+
+    def _get_body_request(self) -> dict:
+        """Returns the "request" field of the body of the current request"""
+        content_length = int(self.headers["Content-Length"])
+        raw_body = self.rfile.read(content_length)
+        body = json.loads(raw_body)
+        request = body["request"]
+        return request
 
 
 class Server:

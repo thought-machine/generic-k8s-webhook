@@ -1,0 +1,75 @@
+request:
+  path: /my-webhook
+  body:
+    apiVersion: admission.k8s.io/v1
+    kind: AdmissionReview
+    request:
+      uid: "1234"
+      object:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: experimental-descheduler
+          namespace: kube-system
+          labels:
+            app.kubernetes.io/name: descheduler
+            app.kubernetes.io/version: "0.27.1"
+
+webhook_config:
+  apiVersion: generic-webhook/v1beta1
+  kind: GenericWebhookConfig
+  webhooks:
+    - name: my-webhook-1
+      path: /my-webhook
+      actions:
+        # Refuse the request if the name is "random-name"
+        - condition: .metadata.name == "random-name"
+          accept: false
+        # Otherwise, accept it and add a label
+        - accept: true
+          patch:
+            - op: add
+              path: .metadata.labels
+              value:
+                myLabel: myValue
+
+    - name: my-webhook-2
+      path: /my-webhook
+      actions:
+        # Add another label if myLabel is present. This only happens if the previous
+        # call to my-webhook-1 went through the second action
+        - condition: .metadata.labels.myLabel == "myValue"
+          patch:
+            - op: add
+              path: .metadata.labels
+              value:
+                otherLabel: otherValue
+
+cases:
+  - patches: []
+    expected_response:
+      apiVersion: admission.k8s.io/v1
+      kind: AdmissionReview
+      response:
+        uid: "1234"
+        allowed: True
+        patchType: JSONPatch
+        patch:
+          - op: add
+            path: /metadata/labels
+            value:
+              myLabel: myValue
+          - op: add
+            path: /metadata/labels
+            value:
+              otherLabel: otherValue
+
+  - patches:
+      - key: [request, body, request, object, metadata, name]
+        value: random-name
+    expected_response:
+      apiVersion: admission.k8s.io/v1
+      kind: AdmissionReview
+      response:
+        uid: "1234"
+        allowed: False
