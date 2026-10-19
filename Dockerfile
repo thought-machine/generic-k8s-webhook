@@ -1,12 +1,12 @@
-FROM python:3.12.0b3-bullseye as builder
+FROM python:3.13-slim-bookworm AS builder
 
-RUN python -m pip install poetry==1.5.1
+RUN python -m pip install poetry==2.5.1
 WORKDIR /tmp/app
 COPY . /tmp/app
 RUN poetry build
 
 
-FROM python:3.12.0b3-slim
+FROM python:3.13-slim-bookworm
 
 COPY --from=builder /tmp/app/dist/ /tmp/dist
 RUN python -m pip install /tmp/dist/*.whl
