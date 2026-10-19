@@ -90,3 +90,9 @@ In case you want to add a new operator, you need to create a new class in [opera
 If there's any modification in the schema of the `<GenericWebhookConfigFile>` yaml file, then we must create a new version for `apiVersion`. The [GenericWebhookConfigManifest](../generic_k8s_webhook/config_parser/entrypoint.py) class will implement a function that instantiates the different subparsers that will parse this new schema version.
 
 This structure helps decoupling the `<GenericWebhookConfigFile>` from the core of the app, so new versions of the schema corresponding to `<GenericWebhookConfigFile>` won't need a complete rewrite of our code.
+
+## Release
+
+Push a tag of the form `vX.Y.Z` (for example `v1.0.0`) on `main`. The `Release` workflow builds the Linux binary, attaches it to a GitHub release with generated notes, and pushes the multi-arch image to `ghcr.io/thought-machine/generic-k8s-webhook`. Tags containing a `-` (for example `v1.1.0-rc1`) are marked as pre-releases.
+
+Dependabot opens grouped weekly PRs for Python packages, GitHub Actions and Docker base images.
