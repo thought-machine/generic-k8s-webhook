@@ -1,30 +1,49 @@
-name: Test PRs
+name: Test
+
 on:
   pull_request:
-    types: [labeled] # So that only labelled PRs get run. https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  push:
+    branches: [main]
 
-# Explicitly grant the `secrets.GITHUB_TOKEN` no permissions.
-permissions: {}
+# The workflow only reads the repository, so it is safe to run on every pull request.
+# https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  POETRY_VERSION: "2.5.1"
+
 jobs:
   execute-unittests:
-    name: Execute the unittests
+    name: Unittests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Setup Action
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check pyproject.toml
         run: make check-pyproject
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: poetry.lock
 
       - name: Install poetry
-        run: python3 -m pip install poetry
+        run: python3 -m pip install poetry==${POETRY_VERSION}
 
       - name: Install Python libraries
         run: poetry install
@@ -43,15 +62,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Action
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Build image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
