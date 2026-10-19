@@ -35,7 +35,7 @@ def cli(args):
             sys.exit(0)
     logging.error(
         f"Couldn't find a webhook called {args.wh_name}. "
-        + f"Valid webhook names are {[webhook.name for webhook in config.list_webhook_config]}"
+        f"Valid webhook names are {[webhook.name for webhook in config.list_webhook_config]}"
     )
     sys.exit(1)
 

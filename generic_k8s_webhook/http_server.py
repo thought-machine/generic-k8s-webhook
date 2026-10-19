@@ -137,7 +137,7 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
 
 
 class Server:
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self, port: int, certfile: str, keyfile: str, generic_webhook_config_file: str, config_refresh_period: float = 5
     ) -> None:
         """Validating/Mutating webhook server. It listens to requests made at port <port>
