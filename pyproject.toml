@@ -17,12 +17,12 @@ lark = "^1.1.7"
 generic_k8s_webhook = "generic_k8s_webhook.main:main"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
+pytest = ">=8,<10"
 pytest-timeout = "^2.1.0"
-isort = "^5.12.0"
-black = "^25.1.0"
-pylint = "^3.3.0"
-pytest-cov = "^6.0.0"
+isort = ">=5.12,<10.0"
+black = ">=25.1,<27.0"
+pylint = ">=3.3,<5.0"
+pytest-cov = ">=6,<8"
 pyinstaller = "^6.11.0"
 
 [tool.isort]
