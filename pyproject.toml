@@ -7,7 +7,7 @@ authors = ["jordi <jordipiqueselles@gmail.com>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.14"
+python = ">=3.11,<3.16"
 PyYAML = "^6.0"
 jsonpatch = "^1.33"
 requests = "^2.32.0"
