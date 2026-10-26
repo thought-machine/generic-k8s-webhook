@@ -526,14 +526,14 @@ colors = ["colorama"]
 
 [[package]]
 name = "jsonpatch"
-version = "1.35"
+version = "1.36"
 description = "Apply JSON-Patches (RFC 6902) "
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "jsonpatch-1.35-py3-none-any.whl", hash = "sha256:417e05303ebf7aef98d3ebf1e1ae7e7a4de6ec57bc5d243cd3509eff650e959f"},
-    {file = "jsonpatch-1.35.tar.gz", hash = "sha256:679ad08672b4663c7ef1e5f3331d940f5e7786661b9acc1530104be1638e7a4f"},
+    {file = "jsonpatch-1.36-py3-none-any.whl", hash = "sha256:aa3ffbc15816644ffcc6b13712dacbc99f6f6dde302abc66983f9831d35630a5"},
+    {file = "jsonpatch-1.36.tar.gz", hash = "sha256:7e110cb3c5a1c8768f7170bf8fb9887c4aa575fba74c95239e868b494bd9a522"},
 ]
 
 [package.dependencies]
